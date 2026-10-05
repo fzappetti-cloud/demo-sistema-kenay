@@ -24,7 +24,7 @@ Hoy Walter lee WhatsApp y escribe a mano una boleta inicial (23:00 a 04:00, y ot
 - La pantalla "1. Cargar pedido" de Walter sigue existiendo para pedidos que llegan por WhatsApp.
 
 ### Selección por tablero (cliente y Walter)
-- Los productos se eligen en un **tablero de 2 columnas**: cada mosaico tiene imagen en miniatura, nombre, forma de venta (`bulto` / `unidad`) y botones **− / +** con la cantidad escrita.
+- Los productos se eligen en un **tablero de 2 columnas**: cada mosaico tiene imagen en miniatura, nombre, forma de venta (`bulto` / `unidad`) y botones **− / +** y un **desplegable** para elegir la cantidad directamente (las dos formas conviven y se mantienen sincronizadas).
 - `unidad`: el + suma de a 1. `bulto`: el primer + da "medio bulto", después "1 bulto", "2 bultos"... (la etiqueta dice siempre "bulto").
 - El mosaico elegido se marca en verde con una insignia de cantidad; abajo queda el resumen del pedido.
 - Las imágenes son **íconos de ejemplo** (no hay fotos reales); la pantalla lo aclara. En la versión final irían fotos de los productos de Kenay.
@@ -98,7 +98,7 @@ Precio del bulto = precio por bulto completo; medio bulto = la mitad.
 7. Funciona bien en pantalla de celular.
 8. Un pedido enviado desde `pedido.html` aparece en la lista del día de Walter sin recargarlo a mano.
 9. Si el DNI no está cargado, el cliente puede cargar su negocio y seguir con su pedido; a Walter le aparece como "Cliente nuevo".
-10. La selección de productos es un tablero de mosaicos con miniatura y botones − / + (cliente y Walter).
+10. La selección de productos es un tablero de mosaicos con miniatura y botones − / + y desplegable de cantidad (cliente y Walter).
 
 ## Fuera de alcance (no construir)
 Cobranza, stock, compras, rutas, recordatorios, seguimiento de clientes, WhatsApp automático, facturación fiscal, usuarios y contraseñas.

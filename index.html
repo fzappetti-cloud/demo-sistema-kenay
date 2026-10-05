@@ -63,6 +63,7 @@
   .tile .step{display:flex;align-items:center;border-top:1px solid var(--line)}
   .tile .step button{border-radius:0;min-height:48px;width:48px;padding:0;font-size:24px;background:#e8e4d8;color:var(--ink)}
   .tile .step button.plus{background:var(--brand);color:#fff}
+  .tile .step select{flex:1;min-width:0;height:48px;border:0;border-radius:0;background:#fff;font-size:14px;font-weight:700;padding:0 2px;text-align:center;text-align-last:center}
   .tile .step span{flex:1;text-align:center;font-size:14px;font-weight:700}
   .hidden{display:none!important}
   .right{text-align:right}
@@ -150,12 +151,17 @@ function paso(p,q,dir){
   if(dir>0)return q===0?0.5:q===0.5?1:q+1;
   return q>1?q-1:q===1?0.5:0;
 }
+function opcionesTile(p,q){
+  const base=p.forma==='bulto'?[0,0.5,1,2,3,4,5,6,7,8,9,10]:[0,1,2,3,4,5,6,7,8,9,10,12,15,20,24];
+  if(!base.includes(q))base.push(q), base.sort((a,b)=>a-b);
+  return base.map(v=>`<option value="${v}" ${v===q?'selected':''}>${v===0?'Cantidad…':cantLabel(p,v)}</option>`).join('');
+}
 function tablero(lineas){
   return '<div class="grid">'+PRODUCTOS.map(p=>{
     const l=lineas.find(x=>x.productoId===p.id), q=l?l.cant:0, ic=ICONOS[p.id];
     return `<div class="tile ${q?'sel':''}"><div class="img" style="background:${ic[1]}">${ic[0]}${q?`<span class="badge">${q===0.5?'½':q}</span>`:''}</div>
       <div class="info"><div class="nm">${p.nombre}</div><div class="fm">se vende por ${p.forma}</div></div>
-      <div class="step"><button onclick="cambiarCant(${p.id},-1)" ${q?'':'disabled'}>−</button><span>${q?cantLabel(p,q):'0'}</span><button class="plus" onclick="cambiarCant(${p.id},1)">+</button></div></div>`;
+      <div class="step"><button onclick="cambiarCant(${p.id},-1)" ${q?'':'disabled'}>−</button><select onchange="fijarCant(${p.id},+this.value)" aria-label="Cantidad de ${p.nombre}">${opcionesTile(p,q)}</select><button class="plus" onclick="cambiarCant(${p.id},1)">+</button></div></div>`;
   }).join('')+'</div>';
 }
 function renderCargar(){
@@ -183,6 +189,11 @@ function renderCargar(){
       <button class="ok" onclick="draft.resumen=true;render()">Ver resumen</button>`;
   }
   $app.innerHTML = h;
+}
+function fijarCant(productoId, cant){
+  draft.lineas = draft.lineas.filter(x => x.productoId !== productoId);
+  if (cant > 0) draft.lineas.push({productoId, cant});
+  render();
 }
 function cambiarCant(productoId, dir){
   const pr = prod(productoId);
