@@ -220,12 +220,15 @@ function renderLista(){
   });
   h += `<div style="height:16px"></div>
   <a class="no-print" href="pedido.html" style="display:block;text-align:center;margin-bottom:8px;font-weight:700">Ver página del cliente (donde cargan su pedido) →</a>
-  <button class="sec no-print" onclick="resetDemo()">Borrar datos del demo</button>`;
+  <button class="bad no-print" onclick="resetDemo()">Limpiar historial (empezar de cero)</button>`;
   $app.innerHTML = h;
 }
 function resetDemo(){
-  if (!confirm('¿Borrar todos los pedidos del demo?')) return;
-  db = {pedidos:[]}; save(); render();
+  if (!confirm(MSG_LIMPIAR)) return;
+  limpiarTodo();
+  db = load(); clienteSel = null;
+  draft = {clienteId:'', tardio:false, lineas:[], resumen:false};
+  render();
 }
 
 /* ---------- 3. Embalaje y control ---------- */

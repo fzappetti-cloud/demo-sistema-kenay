@@ -152,3 +152,12 @@ function f2Reiniciar(){
   f2Sembrar(s);
   return f2Save(s);
 }
+
+// Deja el demo en blanco: sin pedidos, clientes nuevos, boletas, pagos, avisos ni mensajes.
+// (seeded=true evita que vuelvan a cargarse solos los datos de ejemplo.)
+function limpiarTodo(){
+  try { localStorage.removeItem(KEY); } catch(e){}
+  const s = f2Vacio(); s.seeded = true;
+  return f2Save(s);
+}
+const MSG_LIMPIAR = '¿Limpiar todo el historial del demo?\n\nSe borran pedidos, boletas, pagos, avisos, mensajes y clientes nuevos. Queda todo en blanco para empezar de cero.\n\nNo se puede deshacer.';

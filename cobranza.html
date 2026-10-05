@@ -126,7 +126,9 @@ function rCuentas(){
     ${con.length ? con.map(fila).join('') : '<div class="card muted">Nadie tiene saldo pendiente.</div>'}
     ${sin.length ? `<h2>Sin saldo</h2>${sin.map(fila).join('')}` : ''}
     <div class="gap"></div>
-    <button class="sec" onclick="reiniciar()">Reiniciar datos de ejemplo</button>`;
+    <button class="sec" onclick="reiniciar()">Cargar datos de ejemplo de nuevo</button>
+    <div class="gap"></div>
+    <button class="bad" onclick="limpiarHistorial()">Limpiar historial (empezar de cero)</button>`;
 }
 function verCuenta(id){ st.tab = 'cuentas'; abrirCuenta(id); }
 function abrirCuenta(id){ st.cuenta = id; st.pf = null; render(); window.scrollTo(0,0); }
@@ -186,6 +188,13 @@ function guardarPago(){
 function reiniciar(){
   if (!confirm('¿Reiniciar los datos de ejemplo? Se borran los pagos, avisos y mensajes cargados en esta pantalla.')) return;
   f2Reiniciar(); st.cuenta = null; st.pf = null; st.avAbierto = null; st.avSel = new Set(); S = f2Load(); flash('Datos de ejemplo reiniciados.'); render();
+}
+
+function limpiarHistorial(){
+  if (!confirm(MSG_LIMPIAR)) return;
+  limpiarTodo();
+  st = Object.assign(st, {cuenta:null, pf:null, avVista:'pend', avSel:new Set(), avAbierto:null, av:null, fichaId:null, obs:null, m:{tipo:'dia', cid:null, texto:''}});
+  flash('Listo: el historial está en blanco. Podés empezar la prueba de cero.'); render();
 }
 
 /* =====================================================
@@ -315,7 +324,9 @@ function guardarObs(id){
    ===================================================== */
 function motivoSeguimiento(c){
   if (enPausa(c) || c.diaVisita == null) return null;
-  const o = ordenes(c), ult = ultimaFecha(c.diaVisita), prev = sumarDias(ult, -7);
+  const o = ordenes(c);
+  if (!o.length) return null; // sin pedidos nunca hubo qué seguir
+  const ult = ultimaFecha(c.diaVisita), prev = sumarDias(ult, -7);
   if (!o.some(x => x.fecha > prev)) return {tipo:'nopidio', texto:`No pidió para su visita del ${DIAS[c.diaVisita]} ${fmtFecha(ult)}`};
   if (o.length >= 2){
     const a = o[o.length - 1], b = o[o.length - 2];

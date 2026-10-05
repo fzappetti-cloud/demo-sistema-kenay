@@ -84,6 +84,7 @@ function tablero(lineas){
   }).join('')+'</div>';
 }
 // paso: 'ident' (validar negocio) | 'alta' (carga inicial) | 'inicio' | 'pedido' | 'enviado' | 'aviso' | 'avisoOk'
+let infoLimpio='';
 let d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:'',av:null};
 const $=()=>document.getElementById('app');
 
@@ -105,10 +106,17 @@ function renderIdent(){
     <p class="muted">Para la demo, tocá uno de estos DNI de ejemplo:</p>
     <div>${CLIENTES.map(c=>`<button class="chip" onclick="d.dni='${c.dni}';d.noEncontrado=false;render()">${c.nombre}</button>`).join('')}</div>
   </div>
+  ${infoLimpio?`<div class="msg">${esc(infoLimpio)}</div>`:''}
+  <button class="sec" style="margin-top:6px" onclick="limpiarHistorial()">Limpiar historial (empezar de cero)</button>
   ${d.noEncontrado?`<div class="warn"><b>No encontramos ese DNI.</b><br>Si es la primera vez que pedís, cargá los datos de tu negocio.
     <div style="height:10px"></div><button onclick="irAlta()">Cargar mi negocio por primera vez</button></div>`:''}`;
 }
+function limpiarHistorial(){
+  if(!confirm(MSG_LIMPIAR))return;
+  limpiarTodo(); cambiar(); infoLimpio='Listo: el historial está en blanco. Podés empezar de cero.'; render();
+}
 function validar(){
+  infoLimpio='';
   const x=soloDigitos(d.dni);
   const c=todos().find(c=>soloDigitos(c.dni)===x);
   if(c&&x){d.clienteId=c.id;d.paso='inicio';d.noEncontrado=false;}
