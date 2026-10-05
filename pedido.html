@@ -22,6 +22,18 @@
   input[type=text],input[type=tel]{width:100%;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}
   .chip{display:inline-block;background:#e8e4d8;border:0;border-radius:99px;padding:8px 12px;margin:4px 4px 0 0;font-size:15px;width:auto;min-height:0;color:var(--ink);font-weight:600}
   .warn{background:#fff8e6;border:2px solid #c77700;border-radius:12px;padding:12px;margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .tile{background:#fff;border:2px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .tile.sel{border-color:var(--ok);box-shadow:0 0 0 2px #cfeedd}
+  .tile .img{height:84px;display:flex;align-items:center;justify-content:center;font-size:48px;position:relative}
+  .tile .badge{position:absolute;top:6px;right:6px;background:var(--ok);color:#fff;font-size:13px;font-weight:800;border-radius:99px;padding:2px 8px}
+  .tile .info{padding:6px 8px;flex:1}
+  .tile .nm{font-weight:700;font-size:15px;line-height:1.2}
+  .tile .fm{font-size:12px;color:var(--muted)}
+  .tile .step{display:flex;align-items:center;border-top:1px solid var(--line)}
+  .tile .step button{border-radius:0;min-height:48px;width:48px;padding:0;font-size:24px;background:#e8e4d8;color:var(--ink)}
+  .tile .step button.plus{background:var(--brand);color:#fff}
+  .tile .step span{flex:1;text-align:center;font-size:14px;font-weight:700}
   .tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 8px;border-radius:99px;background:#e8e4d8;color:#555}
   .fit{width:auto;flex:0 0 auto;min-height:40px;padding:6px 12px}
   .msg{background:#e9f7ef;border:2px solid var(--ok);border-radius:12px;padding:12px;margin-bottom:10px}
@@ -62,9 +74,20 @@ function cantLabel(p,q){
   if(p.forma==='unidad')return q+(q===1?' unidad':' unidades');
   if(q===0.5)return 'medio bulto'; return q===1?'1 bulto':q+' bultos';
 }
-function opciones(p){
-  const v=p.forma==='bulto'?[1,0.5,2,3,4,5,6,8,10]:[1,2,3,4,5,6,8,10,12,24];
-  return v.map(x=>`<option value="${x}">${cantLabel(p,x)}</option>`).join('');
+const ICONOS={1:['🧻','#e3f0fb'],2:['🧻','#fdf0d5'],3:['🌾','#fbf3d0'],4:['🌾','#f3e6c9'],5:['🍚','#eef2f3'],6:['🥣','#fde4d5'],
+ 7:['🍪','#f5e1c8'],8:['🍯','#f7dfc2'],9:['🍝','#fdeec2'],10:['🫒','#e4f1d4'],11:['🧉','#dbeed8'],12:['🥤','#fbdada']};
+function paso(p,q,dir){
+  if(p.forma==='unidad')return Math.max(0,q+dir);
+  if(dir>0)return q===0?0.5:q===0.5?1:q+1;
+  return q>1?q-1:q===1?0.5:0;
+}
+function tablero(lineas){
+  return '<div class="grid">'+PRODUCTOS.map(p=>{
+    const l=lineas.find(x=>x.productoId===p.id), q=l?l.cant:0, ic=ICONOS[p.id];
+    return `<div class="tile ${q?'sel':''}"><div class="img" style="background:${ic[1]}">${ic[0]}${q?`<span class="badge">${q===0.5?'½':q}</span>`:''}</div>
+      <div class="info"><div class="nm">${p.nombre}</div><div class="fm">se vende por ${p.forma}</div></div>
+      <div class="step"><button onclick="cambiarCant(${p.id},-1)" ${q?'':'disabled'}>−</button><span>${q?cantLabel(p,q):'0'}</span><button class="plus" onclick="cambiarCant(${p.id},1)">+</button></div></div>`;
+  }).join('')+'</div>';
 }
 // paso: 'ident' (validar negocio) | 'alta' (carga inicial) | 'pedido' | 'enviado'
 let d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:''};
@@ -126,12 +149,7 @@ function renderPedido(){
     <span class="muted">DNI ${c.dni}</span>
     <div><a href="#" onclick="cambiar();return false">No soy yo / cambiar</a></div></div>
   <h1>Hacé tu pedido</h1>
-  <div class="card"><label for="prod">Producto <span class="tag">ejemplo</span></label>
-    <select id="prod" onchange="document.getElementById('cant').innerHTML=opciones(prod(+this.value))">
-      ${PRODUCTOS.map(p=>`<option value="${p.id}">${p.nombre} (${p.forma})</option>`).join('')}
-    </select>
-    <label for="cant">Cantidad</label><select id="cant">${opciones(PRODUCTOS[0])}</select>
-    <div style="height:10px"></div><button onclick="agregar()">+ Agregar</button></div>`;
+  <p class="muted">Tocá + en los productos que querés. Imágenes de ejemplo.</p>${tablero(d.lineas)}`;
   if(d.lineas.length){
     h+=`<div class="card"><b>Tu pedido</b>`+d.lineas.map((l,i)=>{const p=prod(l.productoId);
       return `<div class="line"><span>${p.nombre}<br><span class="muted">${cantLabel(p,l.cant)}</span></span>
@@ -141,10 +159,11 @@ function renderPedido(){
   $().innerHTML=h;
 }
 function cambiar(){d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:''};render();}
-function agregar(){
-  const productoId=+document.getElementById('prod').value, cant=+document.getElementById('cant').value;
-  const ex=d.lineas.find(l=>l.productoId===productoId);
-  if(ex)ex.cant+=cant; else d.lineas.push({productoId,cant});
+function cambiarCant(productoId,dir){
+  const pr=prod(productoId); let l=d.lineas.find(x=>x.productoId===productoId);
+  if(!l){l={productoId,cant:0};d.lineas.push(l);}
+  l.cant=paso(pr,l.cant,dir);
+  if(!l.cant)d.lineas=d.lineas.filter(x=>x!==l);
   render();
 }
 function enviar(){
