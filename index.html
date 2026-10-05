@@ -119,6 +119,7 @@ function estadoPedido(ped){
 const ESTADOS = ['Sin empezar','Embalando','Embalado'];
 
 function go(v, id){
+  db = load();
   view = v; if (id !== undefined) clienteSel = id;
   render(); window.scrollTo(0,0);
 }
@@ -212,11 +213,12 @@ function renderLista(){
   db.pedidos.forEach(ped=>{
     const c = cli(ped.clienteId), e = estadoPedido(ped);
     h += `<button class="client" onclick="go('embalaje',${c.id})">
-      <span><b>${c.nombre}</b> ${ped.tardio?'<span class="tag new">NUEVO</span>':''}<br>
+      <span><b>${c.nombre}</b> ${ped.tardio?'<span class="tag new">NUEVO</span>':''}${ped.origen==='cliente'?' <span class="tag ej">Del cliente</span>':''}<br>
       <span class="muted">${ped.items.length} ítem(s)</span></span>
       <span class="tag s${e}">${ESTADOS[e]}</span></button>`;
   });
   h += `<div style="height:16px"></div>
+  <a class="no-print" href="pedido.html" style="display:block;text-align:center;margin-bottom:8px;font-weight:700">Ver página del cliente (donde cargan su pedido) →</a>
   <button class="sec no-print" onclick="resetDemo()">Borrar datos del demo</button>`;
   $app.innerHTML = h;
 }

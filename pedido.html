@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEMO Kenay – Hacé tu pedido</title>
+<style>
+  :root{--bg:#f4f1ea;--card:#fff;--ink:#1f2933;--muted:#6b7280;--line:#d9d4c7;--brand:#1d5fa8;--ok:#1e8e4e;--bad:#c0392b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .demo-bar{background:#222;color:#ffd84d;text-align:center;font-weight:700;padding:6px 8px;font-size:14px}
+  main{max-width:640px;margin:0 auto;padding:12px}
+  h1{font-size:22px;margin:8px 0 12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+  label{display:block;font-weight:600;margin:10px 0 4px}
+  select{width:100%;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px 16px;min-height:52px;background:var(--brand);color:#fff;width:100%;cursor:pointer}
+  button.sec{background:#e8e4d8;color:var(--ink)} button.ok{background:var(--ok)} button.bad{background:var(--bad)}
+  .line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .line:last-child{border-bottom:0}
+  .muted{color:var(--muted);font-size:15px}
+  .tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 8px;border-radius:99px;background:#e8e4d8;color:#555}
+  .fit{width:auto;flex:0 0 auto;min-height:40px;padding:6px 12px}
+  .msg{background:#e9f7ef;border:2px solid var(--ok);border-radius:12px;padding:12px;margin-bottom:10px}
+  a{color:var(--brand);font-weight:700}
+</style>
+</head>
+<body>
+<div class="demo-bar">DEMO – datos ficticios – lado del CLIENTE</div>
+<main id="app"></main>
+<script>
+const CLIENTES=[{id:1,nombre:'Almacén Don Pedro'},{id:2,nombre:'Kiosco La Esquina'},{id:3,nombre:'Despensa Norte'},{id:4,nombre:'Minimercado Sol'},{id:5,nombre:'Almacén Los Pinos'}];
+const PRODUCTOS=[
+ {id:1,nombre:'Papel higiénico (pack)',forma:'bulto'},{id:2,nombre:'Rollos de cocina',forma:'bulto'},
+ {id:3,nombre:'Harina común 1 kg',forma:'bulto'},{id:4,nombre:'Harina leudante 1 kg',forma:'unidad'},
+ {id:5,nombre:'Arroz 1 kg',forma:'bulto'},{id:6,nombre:'Cereales',forma:'unidad'},
+ {id:7,nombre:'Galletitas',forma:'unidad'},{id:8,nombre:'Dulce de leche',forma:'unidad'},
+ {id:9,nombre:'Fideos 500 g',forma:'bulto'},{id:10,nombre:'Aceite 900 ml',forma:'unidad'},
+ {id:11,nombre:'Yerba 1 kg',forma:'unidad'},{id:12,nombre:'Gaseosa 1,5 L',forma:'bulto'}];
+const KEY='demo-kenay-v1';
+const prod=id=>PRODUCTOS.find(p=>p.id===id), cli=id=>CLIENTES.find(c=>c.id===id);
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{pedidos:[]}}catch(e){return {pedidos:[]}}}
+function cantLabel(p,q){
+  if(p.forma==='unidad')return q+(q===1?' unidad':' unidades');
+  if(q===0.5)return 'medio bulto'; return q===1?'1 bulto':q+' bultos';
+}
+function opciones(p){
+  const v=p.forma==='bulto'?[1,0.5,2,3,4,5,6,8,10]:[1,2,3,4,5,6,8,10,12,24];
+  return v.map(x=>`<option value="${x}">${cantLabel(p,x)}</option>`).join('');
+}
+let d={clienteId:'',lineas:[],enviado:null};
+function render(){
+  const $=document.getElementById('app');
+  if(d.enviado){
+    $.innerHTML=`<div class="msg"><b>¡Pedido enviado!</b><br>${cli(d.enviado).nombre}, recibimos tu pedido. Lo vamos a preparar.</div>
+    <button onclick="d={clienteId:'',lineas:[],enviado:null};render()">Hacer otro pedido</button>
+    <p class="muted">Demo: el pedido ya aparece en la <a href="index.html">lista del día de la distribuidora</a> (mismo navegador).</p>`;
+    return;
+  }
+  let h=`<h1>Hacé tu pedido</h1>
+  <div class="card"><label for="cli">¿Quién sos?</label>
+  <select id="cli" onchange="d.clienteId=this.value;render()">
+    <option value="">— Elegí tu negocio —</option>
+    ${CLIENTES.map(c=>`<option value="${c.id}" ${+d.clienteId===c.id?'selected':''}>${c.nombre}</option>`).join('')}
+  </select></div>`;
+  if(d.clienteId){
+    h+=`<div class="card"><label for="prod">Producto <span class="tag">ejemplo</span></label>
+    <select id="prod" onchange="document.getElementById('cant').innerHTML=opciones(prod(+this.value))">
+      ${PRODUCTOS.map(p=>`<option value="${p.id}">${p.nombre} (${p.forma})</option>`).join('')}
+    </select>
+    <label for="cant">Cantidad</label><select id="cant">${opciones(PRODUCTOS[0])}</select>
+    <div style="height:10px"></div><button onclick="agregar()">+ Agregar</button></div>`;
+  }
+  if(d.lineas.length){
+    h+=`<div class="card"><b>Tu pedido</b>`+d.lineas.map((l,i)=>{const p=prod(l.productoId);
+      return `<div class="line"><span>${p.nombre}<br><span class="muted">${cantLabel(p,l.cant)}</span></span>
+      <button class="bad fit" onclick="d.lineas.splice(${i},1);render()">Quitar</button></div>`}).join('')+`</div>
+    <button class="ok" onclick="enviar()">Enviar pedido</button>`;
+  }
+  $.innerHTML=h;
+}
+function agregar(){
+  const productoId=+document.getElementById('prod').value, cant=+document.getElementById('cant').value;
+  const ex=d.lineas.find(l=>l.productoId===productoId);
+  if(ex)ex.cant+=cant; else d.lineas.push({productoId,cant});
+  render();
+}
+function enviar(){
+  const db=load(), cid=+d.clienteId;
+  let ped=db.pedidos.find(p=>p.clienteId===cid);
+  if(!ped){ped={clienteId:cid,items:[],tardio:false,confirmado:false,origen:'cliente'};db.pedidos.push(ped);}
+  d.lineas.forEach(l=>{
+    const ex=ped.items.find(i=>i.productoId===l.productoId&&i.estado==='pend');
+    if(ex)ex.cant+=l.cant; else ped.items.push({productoId:l.productoId,cant:l.cant,estado:'pend'});
+  });
+  ped.confirmado=false;
+  try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}
+  d.enviado=cid; d.lineas=[]; render();
+}
+render();
+</script>
+</body>
+</html>
