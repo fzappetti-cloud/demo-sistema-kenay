@@ -49,7 +49,7 @@
   .boleta{background:#fff;border:1px solid #999;padding:14px;border-radius:6px}
   .boleta h2{margin-top:0}
   .rolebar{display:flex;background:#fff;border-bottom:1px solid var(--line)}
-  .rolebar a{flex:1;text-align:center;padding:12px 4px;text-decoration:none;color:var(--ink);font-weight:700;font-size:16px;border-bottom:4px solid transparent}
+  .rolebar a{flex:1;text-align:center;padding:12px 4px;text-decoration:none;color:var(--ink);font-weight:700;font-size:15px;border-bottom:4px solid transparent}
   .rolebar a.on{border-bottom-color:var(--brand);color:var(--brand);background:#eef4fb}
   @media print{.rolebar{display:none}}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
@@ -77,41 +77,18 @@
 </head>
 <body>
 <div class="demo-bar">DEMO – datos ficticios – no es el sistema final</div>
-<div class="rolebar"><a href="pedido.html" class="">👤 Soy el cliente</a><a href="index.html#lista" class="on">🏭 Soy la distribuidora</a></div>
+<div class="rolebar"><a href="pedido.html" class="">👤 Cliente</a><a href="index.html#lista" class="on">🏭 Distribuidora</a><a href="cobranza.html" class="">💰 Cobranza y clientes</a></div>
 <main id="app"></main>
 <nav class="tabs no-print">
   <button id="t-cargar" onclick="go('cargar')">1. Cargar</button>
   <button id="t-lista" onclick="go('lista')">2. Lista del día</button>
 </nav>
 
+<script src="datos.js"></script>
 <script>
-const CLIENTES = [
-  {id:1, nombre:'Almacén Don Pedro', lista:'A', ve_monto:false},
-  {id:2, nombre:'Kiosco La Esquina', lista:'B', ve_monto:true},
-  {id:3, nombre:'Despensa Norte', lista:'A', ve_monto:false},
-  {id:4, nombre:'Minimercado Sol', lista:'B', ve_monto:false},
-  {id:5, nombre:'Almacén Los Pinos', lista:'A', ve_monto:true},
-];
-const PRODUCTOS = [
-  {id:1, nombre:'Papel higiénico (pack)', forma:'bulto', A:18000, B:19500},
-  {id:2, nombre:'Rollos de cocina', forma:'bulto', A:9000, B:9800},
-  {id:3, nombre:'Harina común 1 kg', forma:'bulto', A:12000, B:13000},
-  {id:4, nombre:'Harina leudante 1 kg', forma:'unidad', A:1500, B:1650},
-  {id:5, nombre:'Arroz 1 kg', forma:'bulto', A:14000, B:15200},
-  {id:6, nombre:'Cereales', forma:'unidad', A:2200, B:2400},
-  {id:7, nombre:'Galletitas', forma:'unidad', A:900, B:1000},
-  {id:8, nombre:'Dulce de leche', forma:'unidad', A:2800, B:3000},
-  {id:9, nombre:'Fideos 500 g', forma:'bulto', A:10500, B:11300},
-  {id:10, nombre:'Aceite 900 ml', forma:'unidad', A:3000, B:3300},
-  {id:11, nombre:'Yerba 1 kg', forma:'unidad', A:4200, B:4600},
-  {id:12, nombre:'Gaseosa 1,5 L', forma:'bulto', A:16000, B:17200},
-];
-const KEY = 'demo-kenay-v1';
 const $app = document.getElementById('app');
-const fmt = n => '$ ' + Math.round(n).toLocaleString('es-AR');
 const todos = () => CLIENTES.concat((db && db.clientes) || []);
 const cli = id => todos().find(c => c.id === id);
-const prod = id => PRODUCTOS.find(p => p.id === id);
 
 function load(){
   try { return JSON.parse(localStorage.getItem(KEY)) || {pedidos:[]}; }
@@ -124,11 +101,6 @@ let db = load();
 let view = location.hash === '#lista' ? 'lista' : 'cargar', clienteSel = null;
 let draft = {clienteId:'', tardio:false, lineas:[], resumen:false};
 
-function cantLabel(p, q){
-  if (p.forma === 'unidad') return q + (q === 1 ? ' unidad' : ' unidades');
-  if (q === 0.5) return 'medio bulto';
-  return (q === 1 ? '1 bulto' : q + ' bultos');
-}
 function precioUnit(c, p){ return p[c.lista]; }
 function subtotal(c, it){ const p = prod(it.productoId); return precioUnit(c,p) * it.cant; }
 function estadoPedido(ped){
@@ -144,8 +116,6 @@ function go(v, id){
 }
 
 /* ---------- 1. Cargar pedido ---------- */
-const ICONOS={1:['🧻','#e3f0fb'],2:['🧻','#fdf0d5'],3:['🌾','#fbf3d0'],4:['🌾','#f3e6c9'],5:['🍚','#eef2f3'],6:['🥣','#fde4d5'],
- 7:['🍪','#f5e1c8'],8:['🍯','#f7dfc2'],9:['🍝','#fdeec2'],10:['🫒','#e4f1d4'],11:['🧉','#dbeed8'],12:['🥤','#fbdada']};
 function paso(p,q,dir){
   if(p.forma==='unidad')return Math.max(0,q+dir);
   if(dir>0)return q===0?0.5:q===0.5?1:q+1;
@@ -223,7 +193,7 @@ function renderResumen(){
 function guardarPedido(){
   const cid = +draft.clienteId;
   let ped = db.pedidos.find(p => p.clienteId === cid);
-  if (!ped){ ped = {clienteId:cid, items:[], tardio:false, confirmado:false}; db.pedidos.push(ped); }
+  if (!ped){ ped = {id:nuevoId('p'), fecha:hoyISO(), clienteId:cid, items:[], tardio:false, confirmado:false}; db.pedidos.push(ped); }
   draft.lineas.forEach(l=>{
     const ex = ped.items.find(i => i.productoId === l.productoId && i.estado === 'pend');
     if (ex) ex.cant += l.cant;
@@ -231,6 +201,7 @@ function guardarPedido(){
   });
   if (draft.tardio) ped.tardio = true;
   ped.confirmado = false; // si llegó algo más, hay que volver a controlar
+  f2SyncBoleta(ped);
   save();
   draft = {clienteId:'', tardio:false, lineas:[], resumen:false};
   go('lista');
@@ -286,12 +257,13 @@ function marcar(i, est){
   const it = ped.items[i];
   it.estado = it.estado === est ? 'pend' : est; // tocar de nuevo destilda
   ped.confirmado = false;
+  f2SyncBoleta(ped);
   save(); render();
 }
 function confirmarCliente(){
   const ped = db.pedidos.find(p => p.clienteId === clienteSel);
   if (ped.items.some(i => i.estado === 'pend')) return;
-  ped.confirmado = true; save();
+  ped.confirmado = true; f2SyncBoleta(ped); save();
   go('boleta', clienteSel);
 }
 

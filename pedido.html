@@ -42,6 +42,14 @@
   .rolebar a{flex:1;text-align:center;padding:12px 4px;text-decoration:none;color:var(--ink);font-weight:700;font-size:16px;border-bottom:4px solid transparent}
   .rolebar a.on{border-bottom-color:var(--brand);color:var(--brand);background:#eef4fb}
   @media print{.rolebar{display:none}}
+  .big{display:flex;align-items:center;gap:14px;text-align:left;font-size:22px;min-height:84px;margin-bottom:12px;padding:16px}
+  .big .ic{font-size:36px}
+  .big small{display:block;font-size:15px;font-weight:500;opacity:.9}
+  input[type=date]{width:100%;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .ayuda{color:var(--muted);font-size:15px;margin:2px 0 0}
+  .prev{margin-top:8px;display:flex;align-items:center;gap:10px}
+  .prev img{max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--line)}
+  .err{color:var(--bad);font-weight:700;margin:8px 0}
   a{color:var(--brand);font-weight:700}
 </style>
 </head>
@@ -49,34 +57,14 @@
 <div class="demo-bar">DEMO – datos ficticios – lado del CLIENTE</div>
 <div class="rolebar"><a href="pedido.html" class="on">👤 Soy el cliente</a><a href="index.html#lista" class="">🏭 Soy la distribuidora</a></div>
 <main id="app"></main>
+<script src="datos.js"></script>
 <script>
-const CLIENTES=[
- {id:1,nombre:'Almacén Don Pedro',dni:'11.111.111'},
- {id:2,nombre:'Kiosco La Esquina',dni:'22.222.222'},
- {id:3,nombre:'Despensa Norte',dni:'33.333.333'},
- {id:4,nombre:'Minimercado Sol',dni:'44.444.444'},
- {id:5,nombre:'Almacén Los Pinos',dni:'55.555.555'}];
-const PRODUCTOS=[
- {id:1,nombre:'Papel higiénico (pack)',forma:'bulto'},{id:2,nombre:'Rollos de cocina',forma:'bulto'},
- {id:3,nombre:'Harina común 1 kg',forma:'bulto'},{id:4,nombre:'Harina leudante 1 kg',forma:'unidad'},
- {id:5,nombre:'Arroz 1 kg',forma:'bulto'},{id:6,nombre:'Cereales',forma:'unidad'},
- {id:7,nombre:'Galletitas',forma:'unidad'},{id:8,nombre:'Dulce de leche',forma:'unidad'},
- {id:9,nombre:'Fideos 500 g',forma:'bulto'},{id:10,nombre:'Aceite 900 ml',forma:'unidad'},
- {id:11,nombre:'Yerba 1 kg',forma:'unidad'},{id:12,nombre:'Gaseosa 1,5 L',forma:'bulto'}];
-const KEY='demo-kenay-v1';
-const prod=id=>PRODUCTOS.find(p=>p.id===id);
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||{pedidos:[]}}catch(e){return {pedidos:[]}}}
 function save(db){try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}}
 const todos=()=>CLIENTES.concat(load().clientes||[]);
 const cli=id=>todos().find(c=>c.id===id);
 const soloDigitos=s=>String(s||'').replace(/\D/g,'');
 const fmtDni=s=>soloDigitos(s).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-function cantLabel(p,q){
-  if(p.forma==='unidad')return q+(q===1?' unidad':' unidades');
-  if(q===0.5)return 'medio bulto'; return q===1?'1 bulto':q+' bultos';
-}
-const ICONOS={1:['🧻','#e3f0fb'],2:['🧻','#fdf0d5'],3:['🌾','#fbf3d0'],4:['🌾','#f3e6c9'],5:['🍚','#eef2f3'],6:['🥣','#fde4d5'],
- 7:['🍪','#f5e1c8'],8:['🍯','#f7dfc2'],9:['🍝','#fdeec2'],10:['🫒','#e4f1d4'],11:['🧉','#dbeed8'],12:['🥤','#fbdada']};
 function paso(p,q,dir){
   if(p.forma==='unidad')return Math.max(0,q+dir);
   if(dir>0)return q===0?0.5:q===0.5?1:q+1;
@@ -95,14 +83,17 @@ function tablero(lineas){
       <div class="step"><button onclick="cambiarCant(${p.id},-1)" ${q?'':'disabled'}>−</button><select onchange="fijarCant(${p.id},+this.value)" aria-label="Cantidad de ${p.nombre}">${opcionesTile(p,q)}</select><button class="plus" onclick="cambiarCant(${p.id},1)">+</button></div></div>`;
   }).join('')+'</div>';
 }
-// paso: 'ident' (validar negocio) | 'alta' (carga inicial) | 'pedido' | 'enviado'
-let d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:''};
+// paso: 'ident' (validar negocio) | 'alta' (carga inicial) | 'inicio' | 'pedido' | 'enviado' | 'aviso' | 'avisoOk'
+let d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:'',av:null};
 const $=()=>document.getElementById('app');
 
 function render(){
   if(d.paso==='ident')return renderIdent();
   if(d.paso==='alta')return renderAlta();
   if(d.paso==='enviado')return renderEnviado();
+  if(d.paso==='inicio')return renderInicio();
+  if(d.paso==='aviso')return renderAviso();
+  if(d.paso==='avisoOk')return renderAvisoOk();
   renderPedido();
 }
 function renderIdent(){
@@ -120,7 +111,7 @@ function renderIdent(){
 function validar(){
   const x=soloDigitos(d.dni);
   const c=todos().find(c=>soloDigitos(c.dni)===x);
-  if(c&&x){d.clienteId=c.id;d.paso='pedido';d.noEncontrado=false;}
+  if(c&&x){d.clienteId=c.id;d.paso='inicio';d.noEncontrado=false;}
   else d.noEncontrado=true;
   render();
 }
@@ -147,13 +138,14 @@ function guardarAlta(){
   const id=100+db.clientes.length+1;
   db.clientes.push({id,nombre:d.alta.nombre.trim(),dni:fmtDni(d.dni),tel:d.alta.tel.trim(),dir:d.alta.dir.trim(),lista:'A',ve_monto:false,nuevo:true});
   save(db);
-  d.clienteId=id;d.paso='pedido';render();
+  d.clienteId=id;d.paso='inicio';render();
 }
 function renderPedido(){
   const c=cli(d.clienteId);
   let h=`<div class="msg">✔ Negocio validado: <b>${c.nombre}</b>${c.nuevo?' <span class="tag">Cliente nuevo</span>':''}<br>
     <span class="muted">DNI ${c.dni}</span>
     <div><a href="#" onclick="cambiar();return false">No soy yo / cambiar</a></div></div>
+  <button class="sec" onclick="d.paso='inicio';render()">← Volver al inicio</button>
   <h1>Hacé tu pedido</h1>
   <p class="muted">Tocá + en los productos que querés. Imágenes de ejemplo.</p>${tablero(d.lineas)}`;
   if(d.lineas.length){
@@ -164,7 +156,100 @@ function renderPedido(){
   }
   $().innerHTML=h;
 }
-function cambiar(){d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:''};render();}
+
+/* ---------- Inicio: dos opciones ---------- */
+function bannerNegocio(){
+  const c=cli(d.clienteId);
+  return `<div class="msg">✔ Negocio validado: <b>${esc(c.nombre)}</b>${c.nuevo?' <span class="tag">Cliente nuevo</span>':''}
+    <div><a href="#" onclick="cambiar();return false">No soy yo / cambiar</a></div></div>`;
+}
+function renderInicio(){
+  $().innerHTML=`${bannerNegocio()}
+  <h1>¿Qué querés hacer?</h1>
+  <button class="big" onclick="d.paso='pedido';render()"><span class="ic">🛒</span><span>Hacer pedido<small>Elegí lo que necesitás</small></span></button>
+  <button class="big ok" onclick="abrirAviso()"><span class="ic">💵</span><span>Avisar pago<small>Contanos que transferiste</small></span></button>`;
+}
+
+/* ---------- Avisar pago ---------- */
+function abrirAviso(){d.av={monto:'',fecha:hoyISO(),nombre:'',comp:null,err:''};d.paso='aviso';render();}
+function montoNum(s){return parseInt(soloDigitos(s),10)||0;}
+function renderAviso(){
+  const a=d.av;
+  $().innerHTML=`<button class="sec" onclick="d.paso='inicio';render()">← Volver al inicio</button>
+  <h1>Avisar pago</h1>
+  <div class="card">
+    <label for="av-monto">¿Cuánto pagaste? (en pesos)</label>
+    <input id="av-monto" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 50000" value="${esc(a.monto)}" oninput="d.av.monto=this.value">
+    <label for="av-fecha">Fecha de la transferencia</label>
+    <input id="av-fecha" type="date" max="${hoyISO()}" value="${esc(a.fecha)}" onchange="d.av.fecha=this.value">
+    <label for="av-nombre">¿A nombre de quién salió la transferencia?</label>
+    <input id="av-nombre" type="text" placeholder="(opcional)" value="${esc(a.nombre)}" oninput="d.av.nombre=this.value">
+    <p class="ayuda">Solo si la hizo otra persona (hijo, esposa, etc.)</p>
+    <label for="av-file">Comprobante</label>
+    <p class="ayuda" style="margin-bottom:6px">Si lo tenés a mano, podés adjuntarlo (no es obligatorio)</p>
+    <input id="av-file" type="file" accept="image/*,application/pdf" onchange="elegirArchivo(this)">
+    <div id="av-prev" class="prev"></div>
+    <div id="av-err" class="err">${esc(a.err)}</div>
+    <button class="ok" onclick="enviarAviso()">Enviar aviso</button>
+  </div>`;
+  pintarPrev();
+}
+function pintarPrev(){
+  const el=document.getElementById('av-prev'); if(!el)return;
+  const c=d.av.comp;
+  el.innerHTML=!c?'':(c.tipo==='img'?`<img src="${c.data}" alt="Vista previa del comprobante">`:`<span>📄 ${esc(c.nombre)}</span>`)
+    +(c?` <button class="sec fit" onclick="d.av.comp=null;document.getElementById('av-file').value='';pintarPrev()">Quitar</button>`:'');
+}
+function setErr(t){d.av.err=t;const e=document.getElementById('av-err');if(e)e.textContent=t;}
+function procesarArchivo(file){
+  return new Promise((res,rej)=>{
+    if(file.type==='application/pdf'||/\.pdf$/i.test(file.name)){
+      if(file.size>1024*1024)return rej(new Error('pesado'));
+      const r=new FileReader();
+      r.onload=()=>res({tipo:'pdf',nombre:file.name,data:r.result});
+      r.onerror=()=>rej(new Error('lectura'));
+      r.readAsDataURL(file);return;
+    }
+    if(!/^image\//.test(file.type))return rej(new Error('tipo'));
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onload=()=>{
+      const k=Math.min(1,1000/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));
+      const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      res({tipo:'img',nombre:file.name,data:c.toDataURL('image/jpeg',0.75)});
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('imagen'));};
+    img.src=url;
+  });
+}
+function elegirArchivo(inp){
+  const f=inp.files&&inp.files[0]; if(!f)return;
+  procesarArchivo(f).then(c=>{d.av.comp=c;setErr('');pintarPrev();})
+  .catch(e=>{
+    d.av.comp=null;inp.value='';pintarPrev();
+    setErr(e.message==='pesado'?'El archivo es muy pesado, probá con una captura':'No pudimos leer ese archivo. Probá con una foto o una captura.');
+  });
+}
+function enviarAviso(){
+  const a=d.av,monto=montoNum(a.monto);
+  if(!monto)return setErr('Escribí cuánto pagaste.');
+  if(!a.fecha)return setErr('Elegí la fecha de la transferencia.');
+  if(a.fecha>hoyISO())return setErr('La fecha no puede ser futura.');
+  const s=f2Load();
+  s.avisos.push({id:nuevoId('av'),clienteId:d.clienteId,monto,fechaTransf:a.fecha,aNombreDe:a.nombre.trim(),
+    comprobante:a.comp,enviadoAt:new Date().toISOString(),estado:'avisado',origen:'cliente'});
+  if(!f2Save(s)){
+    return setErr(a.comp?'No hay lugar para guardar el comprobante. Probá enviar el aviso sin adjuntarlo.':'No pudimos guardar el aviso porque no hay espacio. Avisale a la distribuidora.');
+  }
+  d.av=null;d.paso='avisoOk';render();
+}
+function renderAvisoOk(){
+  $().innerHTML=`<div class="msg"><b>Listo, recibimos tu aviso.</b><br>No tenés que hacer nada más.</div>
+  <button class="sec" onclick="d.paso='inicio';render()">Volver al inicio</button>
+  <p class="muted">Demo: el aviso ya aparece en <a href="cobranza.html#avisos">Pagos avisados de la distribuidora</a> (mismo navegador).</p>`;
+}
+function cambiar(){d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:'',av:null};render();}
 function fijarCant(productoId,cant){
   d.lineas=d.lineas.filter(x=>x.productoId!==productoId);
   if(cant>0)d.lineas.push({productoId,cant});
@@ -180,19 +265,21 @@ function cambiarCant(productoId,dir){
 function enviar(){
   const db=load(), cid=d.clienteId;
   let ped=db.pedidos.find(p=>p.clienteId===cid);
-  if(!ped){ped={clienteId:cid,items:[],tardio:false,confirmado:false,origen:'cliente'};db.pedidos.push(ped);}
+  if(!ped){ped={id:nuevoId('p'),fecha:hoyISO(),clienteId:cid,items:[],tardio:false,confirmado:false,origen:'cliente'};db.pedidos.push(ped);}
   d.lineas.forEach(l=>{
     const ex=ped.items.find(i=>i.productoId===l.productoId&&i.estado==='pend');
     if(ex)ex.cant+=l.cant; else ped.items.push({productoId:l.productoId,cant:l.cant,estado:'pend'});
   });
-  ped.confirmado=false; save(db);
+  ped.confirmado=false; f2SyncBoleta(ped); save(db);
   d.lineas=[]; d.paso='enviado'; render();
 }
 function renderEnviado(){
   $().innerHTML=`<div class="msg"><b>¡Pedido enviado!</b><br>${cli(d.clienteId).nombre}, recibimos tu pedido. Lo vamos a preparar.</div>
   <a href="index.html#lista" style="text-decoration:none"><button class="ok">Ver cómo le llega a la distribuidora →</button></a>
   <div style="height:8px"></div>
-  <button class="sec" onclick="d.paso='pedido';render()">Hacer otro pedido</button>`;
+  <button class="sec" onclick="d.paso='pedido';render()">Hacer otro pedido</button>
+  <div style="height:8px"></div>
+  <button class="sec" onclick="d.paso='inicio';render()">Volver al inicio</button>`;
 }
 render();
 </script>

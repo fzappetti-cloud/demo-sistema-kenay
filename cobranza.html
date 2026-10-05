@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEMO Kenay – Cobranza y clientes</title>
+<style>
+  :root{
+    --bg:#f4f1ea; --card:#fff; --ink:#1f2933; --muted:#6b7280; --line:#d9d4c7;
+    --brand:#1d5fa8; --ok:#1e8e4e; --warn:#c77700; --bad:#c0392b; --new:#7b2cbf;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:84px}
+  .demo-bar{background:#222;color:#ffd84d;text-align:center;font-weight:700;padding:6px 8px;font-size:14px;letter-spacing:.5px}
+  .rolebar{display:flex;background:#fff;border-bottom:1px solid var(--line)}
+  .rolebar a{flex:1;text-align:center;padding:12px 4px;text-decoration:none;color:var(--ink);font-weight:700;font-size:15px;border-bottom:4px solid transparent}
+  .rolebar a.on{border-bottom-color:var(--brand);color:var(--brand);background:#eef4fb}
+  main{max-width:640px;margin:0 auto;padding:12px}
+  h1{font-size:22px;margin:8px 0 12px}
+  h2{font-size:19px;margin:16px 0 8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+  label{display:block;font-weight:600;margin:10px 0 4px}
+  select,input[type=text],input[type=date],textarea{width:100%;font:inherit;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  textarea{min-height:130px}
+  button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px 16px;min-height:52px;background:var(--brand);color:#fff;width:100%;cursor:pointer}
+  button.sec{background:#e8e4d8;color:var(--ink)}
+  button.ok{background:var(--ok)}
+  button.bad{background:var(--bad)}
+  button:disabled{background:#c9c9c9;color:#777;cursor:not-allowed}
+  .row{display:flex;gap:8px;align-items:center}
+  .row>*{flex:1}
+  .gap{height:8px}
+  .tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 8px;border-radius:99px;color:#fff;vertical-align:middle;background:#888}
+  .tag.av{background:var(--warn)} .tag.ok{background:var(--ok)} .tag.no{background:#888} .tag.new{background:var(--new)} .tag.bad{background:var(--bad)}
+  .muted{color:var(--muted);font-size:15px}
+  .line{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .line:last-child{border-bottom:0}
+  .fila{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);margin-bottom:8px}
+  .saldo{font-size:22px;font-weight:800;white-space:nowrap}
+  .fila>span:first-child{min-width:0}
+  .saldo.deuda{color:var(--bad)}
+  .grande{font-size:30px;font-weight:800}
+  .msg{background:#e9f7ef;border:2px solid var(--ok);border-radius:12px;padding:12px;margin-bottom:10px}
+  .warn{background:#fff8e6;border:2px solid var(--warn);border-radius:12px;padding:12px;margin-bottom:10px}
+  .err{color:var(--bad);font-weight:700;margin:8px 0}
+  .seg{display:flex;gap:8px;margin-bottom:10px}
+  .seg button{background:#e8e4d8;color:var(--ink)}
+  .seg button.on{background:var(--brand);color:#fff}
+  .avrow{display:flex;gap:10px;align-items:stretch;margin-bottom:8px}
+  .avrow input[type=checkbox]{width:30px;height:30px;align-self:center;flex:0 0 auto}
+  .avrow .fila{margin:0;flex:1}
+  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#222;padding:6px;gap:4px;z-index:5}
+  .tabs button{background:#444;font-size:12px;padding:6px 2px;min-height:52px;line-height:1.15;position:relative}
+  .tabs button.on{background:var(--brand)}
+  .tabs .ic{display:block;font-size:20px}
+  .tabs .bdg{position:absolute;top:2px;right:6px;background:var(--bad);color:#fff;border-radius:99px;font-size:12px;padding:0 6px;min-width:18px}
+  .wa{background:#e5ddd5;border-radius:12px;padding:14px;margin:8px 0}
+  .bubble{background:#dcf8c6;border-radius:10px 10px 0 10px;padding:8px 10px;margin-left:auto;max-width:90%;white-space:pre-wrap;word-wrap:break-word;font-size:16px;box-shadow:0 1px 1px rgba(0,0,0,.15)}
+  .bubble small{display:block;text-align:right;color:#667;font-size:11px;margin-top:2px}
+  img.comp{max-width:100%;border:1px solid var(--line);border-radius:8px}
+  @media print{.tabs,.rolebar{display:none}}
+</style>
+</head>
+<body>
+<div class="demo-bar">DEMO – datos ficticios – Fase 2: Cobranza y CRM</div>
+<div class="rolebar"><a href="pedido.html">👤 Cliente</a><a href="index.html#lista">🏭 Distribuidora</a><a href="cobranza.html" class="on">💰 Cobranza y clientes</a></div>
+<main id="app"></main>
+<nav class="tabs" id="tabs"></nav>
+
+<script src="datos.js"></script>
+<script>
+const TABS = [['cuentas','💳','Cuenta corriente'],['avisos','📩','Pagos avisados'],['ficha','🗂️','Ficha de cliente'],['seguir','🔎','Seguimiento'],['mensajes','💬','Mensajes']];
+const hash = location.hash.replace('#','');
+let st = {
+  tab: TABS.some(t => t[0] === hash) ? hash : 'cuentas',
+  cuenta: null, pf: null,                 // cuenta corriente: cliente abierto y form de pago
+  avVista: 'pend', avSel: new Set(), avAbierto: null, av: null,   // pagos avisados
+  fichaId: null, obs: null,               // ficha
+  m: {tipo:'dia', cid:null, texto:''},    // mensajes
+  flash: ''
+};
+const $app = document.getElementById('app');
+let S = null; // datos de la fase 2 (se recargan en cada render)
+
+function init(){
+  S = f2Load();
+  if (!S.seeded){ f2Sembrar(S); f2Save(S); }
+}
+function guardar(){ if (!f2Save(S)) st.flash = '⚠ No hay espacio para guardar. Reiniciá los datos de ejemplo.'; }
+function go(tab){ st.tab = tab; st.obs = null; st.cuenta = null; st.pf = null; st.avAbierto = null; render(); window.scrollTo(0,0); }
+function flash(t){ st.flash = t; }
+
+/* ---------- consultas ---------- */
+const pendientes = () => S.avisos.filter(a => a.estado === 'avisado');
+function pedidoPendiente(c){ return dbLoad().pedidos.find(p => p.clienteId === c.id && !p.confirmado); }
+function boletaNueva(c){
+  const p = pedidoPendiente(c); if (!p) return null;
+  const items = p.items.filter(i => i.estado !== 'falt');
+  return items.length ? {items, total: totalItems(c, items)} : null;
+}
+function ordenes(c){
+  const o = S.boletas.filter(b => b.clienteId === c.id).map(b => ({fecha: b.pedidoFecha || b.fecha, items: b.items}));
+  const p = pedidoPendiente(c);
+  if (p) o.push({fecha: p.fecha || hoyISO(), items: p.items, pend: true});
+  return o.sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
+}
+const enPausa = c => /paus/i.test((S.fichas[c.id] || {}).obs || '');
+const nombreCli = id => { const c = clienteDe(id); return c ? c.nombre : '(cliente borrado)'; };
+
+/* =====================================================
+   1. CUENTA CORRIENTE
+   ===================================================== */
+function rCuentas(){
+  if (st.cuenta) return rCuentaDetalle();
+  const filas = clientesTodos().map(c => ({c, saldo: f2Saldo(S, c.id)}));
+  const con = filas.filter(f => f.saldo > 0).sort((a, b) => b.saldo - a.saldo);
+  const sin = filas.filter(f => f.saldo <= 0);
+  const fila = f => {
+    const av = pendientes().filter(a => a.clienteId === f.c.id).length;
+    return `<button class="fila" onclick="abrirCuenta(${f.c.id})">
+      <span><b>${esc(f.c.nombre)}</b> ${av ? `<span class="tag av">Avisó pago</span>` : ''}<br><span class="muted">${f.saldo < 0 ? 'Saldo a favor' : f.saldo === 0 ? 'Al día' : 'Debe'}</span></span>
+      <span class="saldo ${f.saldo > 0 ? 'deuda' : ''}">${fmt(Math.abs(f.saldo))}</span></button>`;
+  };
+  return `<h1>Cuenta corriente</h1>
+    <p class="muted">Saldo = boletas entregadas − pagos confirmados. Se calcula solo.</p>
+    ${con.length ? con.map(fila).join('') : '<div class="card muted">Nadie tiene saldo pendiente.</div>'}
+    ${sin.length ? `<h2>Sin saldo</h2>${sin.map(fila).join('')}` : ''}
+    <div class="gap"></div>
+    <button class="sec" onclick="reiniciar()">Reiniciar datos de ejemplo</button>`;
+}
+function verCuenta(id){ st.tab = 'cuentas'; abrirCuenta(id); }
+function abrirCuenta(id){ st.cuenta = id; st.pf = null; render(); window.scrollTo(0,0); }
+
+function rCuentaDetalle(){
+  const c = clienteDe(st.cuenta); if (!c){ st.cuenta = null; return rCuentas(); }
+  const saldo = f2Saldo(S, c.id), nueva = boletaNueva(c);
+  const bol = S.boletas.filter(b => b.clienteId === c.id).sort((a, b) => b.fecha < a.fecha ? -1 : 1);
+  const pag = S.pagos.filter(p => p.clienteId === c.id).sort((a, b) => b.fecha < a.fecha ? -1 : 1);
+  const avs = pendientes().filter(a => a.clienteId === c.id);
+  return `<button class="sec" onclick="st.cuenta=null;st.pf=null;render()">← Cuenta corriente</button>
+  <h1>${esc(c.nombre)}</h1>
+  <div class="card">
+    <div class="muted">${saldo < 0 ? 'Saldo a favor' : 'Saldo'}</div>
+    <div class="grande ${saldo > 0 ? 'deuda saldo' : ''}">${fmt(Math.abs(saldo))}</div>
+    <div class="line" style="margin-top:8px"><span><b>Total a cobrar en la próxima visita</b><br>
+      <span class="muted">saldo anterior ${fmt(Math.max(saldo,0))} + boleta nueva ${nueva ? fmt(nueva.total) : '$ 0 (sin pedido pendiente de entrega)'}</span></span>
+      <b>${fmt(Math.max(saldo,0) + (nueva ? nueva.total : 0))}</b></div>
+  </div>
+  ${st.pf ? rFormPago(c, saldo) : `<button class="ok" onclick="abrirPago()">Registrar pago</button><div class="gap"></div>
+  <button class="sec" onclick="st.fichaId=${c.id};go('ficha')">Ver ficha del cliente</button>`}
+  ${avs.length ? `<h2>Avisado, sin confirmar</h2><div class="card">${avs.map(a => `<div class="line"><span>${fmt(a.monto)} · ${fmtFecha(a.fechaTransf)}${a.aNombreDe ? `<br><span class="muted">a nombre de ${esc(a.aNombreDe)}</span>` : ''}</span><span class="tag av">Avisado</span></div>`).join('')}
+    <p class="muted">No descuenta del saldo hasta que se confirme.</p>
+    <button class="sec" onclick="st.avVista='pend';go('avisos')">Ir a Pagos avisados</button></div>` : ''}
+  <h2>Boletas entregadas</h2><div class="card">${bol.length ? bol.map(b => `<div class="line"><span>${fmtFecha(b.fecha)}<br><span class="muted">${b.items.length} ítem(s)</span></span><b>${fmt(totalItems(c, b.items))}</b></div>`).join('') : '<span class="muted">Sin boletas.</span>'}</div>
+  <h2>Pagos confirmados</h2><div class="card">${pag.length ? pag.map(p => `<div class="line"><span>${fmtFecha(p.fecha)} · ${p.forma === 'efectivo' ? 'Efectivo' : 'Transferencia'} · ${p.tipo === 'parcial' ? 'parcial' : 'total'}${p.aNombreDe ? `<br><span class="muted">Pagó a nombre de ${esc(p.aNombreDe)}</span>` : ''}</span><b>${fmt(p.monto)}</b></div>`).join('') : '<span class="muted">Sin pagos.</span>'}</div>`;
+}
+function abrirPago(){ st.pf = {forma:'efectivo', tipo:'total', monto:'', fecha:hoyISO(), nombre:'', err:''}; render(); }
+function pf(k, v){ st.pf[k] = v; render(); }
+function rFormPago(c, saldo){
+  const f = st.pf;
+  return `<div class="card"><h2 style="margin-top:0">Registrar pago</h2>
+    <label>Forma de pago</label>
+    <div class="seg"><button class="${f.forma==='efectivo'?'on':''}" onclick="pf('forma','efectivo')">Efectivo</button><button class="${f.forma==='transferencia'?'on':''}" onclick="pf('forma','transferencia')">Transferencia</button></div>
+    <label>Tipo</label>
+    <div class="seg"><button class="${f.tipo==='total'?'on':''}" onclick="pf('tipo','total')">Total</button><button class="${f.tipo==='parcial'?'on':''}" onclick="pf('tipo','parcial')">Parcial</button></div>
+    ${f.tipo === 'total' ? `<p>Se paga todo el saldo: <b>${fmt(Math.max(saldo,0))}</b></p>`
+      : `<label for="pf-monto">Monto</label><input id="pf-monto" type="text" inputmode="numeric" placeholder="Ej: 20000" value="${esc(f.monto)}" oninput="st.pf.monto=this.value">`}
+    <label for="pf-fecha">Fecha</label><input id="pf-fecha" type="date" max="${hoyISO()}" value="${esc(f.fecha)}" onchange="st.pf.fecha=this.value">
+    ${f.forma === 'transferencia' ? `<label for="pf-nombre">Pagó a nombre de (opcional)</label><input id="pf-nombre" type="text" placeholder="Si la cuenta es de otra persona" value="${esc(f.nombre)}" oninput="st.pf.nombre=this.value">` : ''}
+    <div class="err">${esc(f.err)}</div>
+    <button class="ok" onclick="guardarPago()">Guardar pago</button><div class="gap"></div>
+    <button class="sec" onclick="st.pf=null;render()">Cancelar</button></div>`;
+}
+function guardarPago(){
+  const c = clienteDe(st.cuenta), f = st.pf, saldo = f2Saldo(S, c.id);
+  const monto = f.tipo === 'total' ? saldo : (parseInt(String(f.monto).replace(/\D/g, ''), 10) || 0);
+  const err = t => { f.err = t; render(); };
+  if (monto <= 0) return err(f.tipo === 'total' ? 'Este cliente no tiene saldo para cobrar.' : 'Escribí el monto.');
+  if (f.tipo === 'parcial' && monto > saldo) return err('El monto no puede ser mayor al saldo (' + fmt(saldo) + ').');
+  if (!f.fecha) return err('Elegí la fecha.');
+  if (f.fecha > hoyISO()) return err('La fecha no puede ser futura.');
+  S.pagos.push({id:nuevoId('pg'), clienteId:c.id, forma:f.forma, monto, fecha:f.fecha,
+    aNombreDe: f.forma === 'transferencia' ? f.nombre.trim() : '', tipo:f.tipo, origen:'registro'});
+  guardar(); st.pf = null; flash('Pago registrado. Saldo actual: ' + fmt(f2Saldo(S, c.id))); render();
+}
+function reiniciar(){
+  if (!confirm('¿Reiniciar los datos de ejemplo? Se borran los pagos, avisos y mensajes cargados en esta pantalla.')) return;
+  f2Reiniciar(); st.cuenta = null; st.pf = null; st.avAbierto = null; st.avSel = new Set(); S = f2Load(); flash('Datos de ejemplo reiniciados.'); render();
+}
+
+/* =====================================================
+   2. PAGOS AVISADOS
+   ===================================================== */
+function rAvisos(){
+  if (st.avAbierto) return rAvisoDetalle();
+  const pend = pendientes().sort((a, b) => a.enviadoAt < b.enviadoAt ? 1 : -1);
+  const hist = S.avisos.filter(a => a.estado !== 'avisado').sort((a, b) => (b.resueltoAt || '') < (a.resueltoAt || '') ? -1 : 1);
+  let h = `<h1>Pagos avisados</h1>
+  <div class="seg"><button class="${st.avVista==='pend'?'on':''}" onclick="st.avVista='pend';render()">Pendientes (${pend.length})</button><button class="${st.avVista==='hist'?'on':''}" onclick="st.avVista='hist';render()">Historial</button></div>`;
+  if (st.avVista === 'hist'){
+    h += hist.length ? hist.map(a => `<div class="card"><div class="line" style="border:0;padding:0"><span><b>${esc(nombreCli(a.clienteId))}</b><br><span class="muted">${fmt(a.monto)} · transf. ${fmtFecha(a.fechaTransf)}${a.aNombreDe ? ' · ' + esc(a.aNombreDe) : ''}</span></span>
+      <span class="tag ${a.estado === 'confirmado' ? 'ok' : 'no'}">${a.estado === 'confirmado' ? 'Confirmado' : 'Descartado'}</span></div></div>`).join('') : '<div class="card muted">Todavía no hay avisos confirmados ni descartados.</div>';
+    return h;
+  }
+  if (!pend.length) return h + '<div class="card muted">No hay avisos pendientes.</div>';
+  const n = [...st.avSel].filter(id => pend.some(a => a.id === id)).length;
+  h += `<button class="ok" ${n ? '' : 'disabled'} onclick="confirmarSel()">Confirmar seleccionados (${n})</button><div class="gap"></div>`;
+  h += pend.map(a => `<div class="avrow"><input type="checkbox" aria-label="Seleccionar" ${st.avSel.has(a.id) ? 'checked' : ''} onchange="togSel('${a.id}')">
+    <button class="fila" onclick="abrirAviso('${a.id}')"><span><b>${esc(nombreCli(a.clienteId))}</b> ${a.comprobante ? '📎' : ''}<br>
+      <span class="muted">Transf. ${fmtFecha(a.fechaTransf)}${a.aNombreDe ? ' · a nombre de ' + esc(a.aNombreDe) : ''}<br>Enviado ${fmtFechaHora(a.enviadoAt)}</span></span>
+      <span class="saldo">${fmt(a.monto)}</span></button></div>`).join('');
+  return h;
+}
+function togSel(id){ st.avSel.has(id) ? st.avSel.delete(id) : st.avSel.add(id); render(); }
+function abrirAviso(id){ const a = S.avisos.find(x => x.id === id); st.avAbierto = id; st.av = {monto:String(a.monto), fecha:a.fechaTransf, err:''}; render(); window.scrollTo(0,0); }
+function rAvisoDetalle(){
+  const a = S.avisos.find(x => x.id === st.avAbierto); if (!a){ st.avAbierto = null; return rAvisos(); }
+  const v = st.av;
+  const comp = a.comprobante
+    ? (a.comprobante.tipo === 'img' ? `<img class="comp" src="${a.comprobante.data}" alt="Comprobante">` : `<button class="sec" onclick="abrirPdf('${a.id}')">📄 Abrir PDF (${esc(a.comprobante.nombre)})</button>`)
+    : '<p class="muted">Sin comprobante adjunto.</p>';
+  return `<button class="sec" onclick="st.avAbierto=null;render()">← Pagos avisados</button>
+  <h1>${esc(nombreCli(a.clienteId))}</h1>
+  <div class="card">
+    <div class="muted">Aviso enviado ${fmtFechaHora(a.enviadoAt)}${a.aNombreDe ? `<br>A nombre de: <b>${esc(a.aNombreDe)}</b>` : ''}</div>
+    <p class="muted">Buscá esta transferencia en tu billetera (por monto y nombre). Si no coincide, corregí el monto o la fecha.</p>
+    <label for="av-monto">Monto</label><input id="av-monto" type="text" inputmode="numeric" value="${esc(v.monto)}" oninput="st.av.monto=this.value">
+    <label for="av-fecha">Fecha de la transferencia</label><input id="av-fecha" type="date" max="${hoyISO()}" value="${esc(v.fecha)}" onchange="st.av.fecha=this.value">
+    <div class="err">${esc(v.err)}</div>
+    <button class="ok" onclick="confirmarUno('${a.id}')">Confirmar este aviso</button><div class="gap"></div>
+    <button class="bad" onclick="descartar('${a.id}')">Descartar</button>
+  </div>
+  <h2>Comprobante</h2><div class="card">${comp}</div>`;
+}
+function abrirPdf(id){
+  const a = S.avisos.find(x => x.id === id);
+  fetch(a.comprobante.data).then(r => r.blob()).then(b => window.open(URL.createObjectURL(b), '_blank'));
+}
+function confirmarAviso(a, monto, fecha){
+  const pagoId = nuevoId('pg');
+  S.pagos.push({id:pagoId, clienteId:a.clienteId, forma:'transferencia', monto, fecha, aNombreDe:a.aNombreDe || '', tipo:'total', origen:'aviso', avisoId:a.id});
+  a.monto = monto; a.fechaTransf = fecha; a.estado = 'confirmado'; a.pagoId = pagoId; a.resueltoAt = new Date().toISOString();
+}
+function confirmarUno(id){
+  const a = S.avisos.find(x => x.id === id); if (!a || a.estado !== 'avisado') return;
+  const monto = parseInt(String(st.av.monto).replace(/\D/g, ''), 10) || 0, fecha = st.av.fecha;
+  const err = t => { st.av.err = t; render(); };
+  if (monto <= 0) return err('Escribí el monto.');
+  if (!fecha) return err('Elegí la fecha.');
+  if (fecha > hoyISO()) return err('La fecha no puede ser futura.');
+  confirmarAviso(a, monto, fecha); guardar();
+  st.avAbierto = null; st.avSel.delete(id); flash('Aviso confirmado. El saldo de ' + nombreCli(a.clienteId) + ' bajó a ' + fmt(f2Saldo(S, a.clienteId)) + '.'); render();
+}
+function confirmarSel(){
+  const ids = [...st.avSel]; let n = 0;
+  ids.forEach(id => { const a = S.avisos.find(x => x.id === id); if (a && a.estado === 'avisado'){ confirmarAviso(a, a.monto, a.fechaTransf); n++; } });
+  guardar(); st.avSel = new Set(); flash(n + ' aviso(s) confirmado(s). Los saldos ya bajaron.'); render();
+}
+function descartar(id){
+  if (!confirm('¿Descartar este aviso? No afecta el saldo.')) return;
+  const a = S.avisos.find(x => x.id === id); a.estado = 'descartado'; a.resueltoAt = new Date().toISOString();
+  guardar(); st.avAbierto = null; st.avSel.delete(id); flash('Aviso descartado.'); render();
+}
+
+/* =====================================================
+   3. FICHA DE CLIENTE (CRM)
+   ===================================================== */
+function rFicha(){
+  const todos = clientesTodos();
+  if (!st.fichaId || !clienteDe(st.fichaId)) st.fichaId = todos[0].id;
+  const c = clienteDe(st.fichaId);
+  if (st.obs === null) st.obs = (S.fichas[c.id] || {}).obs || '';
+  const ord = ordenes(c).slice().reverse(), saldo = f2Saldo(S, c.id);
+  const pag = S.pagos.filter(p => p.clienteId === c.id).sort((a, b) => b.fecha < a.fecha ? -1 : 1);
+  // pagadores habituales
+  const pagadores = {};
+  pag.forEach(p => { const n = (p.aNombreDe || '').trim(); if (n) pagadores[n] = (pagadores[n] || 0) + 1; });
+  const listaPag = Object.entries(pagadores).sort((a, b) => b[1] - a[1]);
+  // productos habituales (en cuántos pedidos aparece cada uno)
+  const cuenta = {};
+  ordenes(c).forEach(o => o.items.forEach(i => { const k = cuenta[i.productoId] = cuenta[i.productoId] || {n:0, q:0}; k.n++; k.q += i.cant; }));
+  const habit = Object.entries(cuenta).sort((a, b) => b[1].n - a[1].n || b[1].q - a[1].q).slice(0, 4);
+  return `<h1>Ficha de cliente</h1>
+  <select aria-label="Cliente" onchange="st.fichaId=+this.value;st.obs=null;render()">${todos.map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select>
+  <div class="gap"></div>
+  <div class="card"><h2 style="margin-top:0">Datos ${c.nuevo ? '<span class="tag new">Cliente nuevo</span>' : ''}</h2>
+    <div class="line"><span>Negocio</span><b>${esc(c.nombre)}</b></div>
+    <div class="line"><span>Teléfono</span><b>${esc(c.tel || '—')}</b></div>
+    <div class="line"><span>Dirección de entrega</span><b>${esc(c.dir || '—')}</b></div>
+    <div class="line"><span>Día de visita</span><b>${c.diaVisita != null ? DIAS[c.diaVisita] : 'sin definir'}</b></div>
+    <div class="line"><span>Lista de precios</span><b>${c.lista}</b></div>
+    <div class="line"><span>¿Ve el monto?</span><b>${c.ve_monto ? 'Sí' : 'No'}</b></div></div>
+  <div class="card"><h2 style="margin-top:0">Pagos y saldo</h2>
+    <div class="line"><span>Saldo</span><b class="${saldo > 0 ? 'saldo deuda' : ''}">${fmt(saldo)}</b></div>
+    ${pag.slice(0, 5).map(p => `<div class="line"><span>${fmtFecha(p.fecha)} · ${p.forma === 'efectivo' ? 'Efectivo' : 'Transf.'}${p.tipo === 'parcial' ? ' (parcial)' : ''}</span><span>${fmt(p.monto)}</span></div>`).join('') || '<span class="muted">Sin pagos.</span>'}
+    <div class="gap"></div><button class="sec" onclick="verCuenta(${c.id})">Ver cuenta corriente</button></div>
+  <div class="card"><h2 style="margin-top:0">Pagadores habituales</h2>
+    ${listaPag.length ? listaPag.map(([n, k]) => `<div class="line"><span>${esc(n)}</span><span class="muted">${k} pago(s)</span></div>`).join('') : '<span class="muted">Todavía no hay pagos a nombre de otra persona.</span>'}</div>
+  <div class="card"><h2 style="margin-top:0">Productos habituales</h2>
+    ${habit.length ? habit.map(([id, k]) => `<div class="line"><span>${esc(prod(+id).nombre)}</span><span class="muted">en ${k.n} de ${ordenes(c).length} pedidos</span></div>`).join('') : '<span class="muted">Todavía no hay pedidos.</span>'}</div>
+  <div class="card"><h2 style="margin-top:0">Historial de pedidos</h2>
+    ${ord.length ? ord.map(o => `<div class="line"><span>${fmtFecha(o.fecha)} ${o.pend ? '<span class="tag av">pendiente</span>' : ''}</span><span>${o.items.length} ítem(s)</span></div>`).join('') : '<span class="muted">Sin pedidos.</span>'}</div>
+  <div class="card"><h2 style="margin-top:0">Observaciones</h2>
+    <textarea aria-label="Observaciones" placeholder="Ej: pausó por vacaciones" oninput="st.obs=this.value">${esc(st.obs)}</textarea>
+    <p class="muted">Si escribís "pausa" o "pausó", el cliente no aparece en Seguimiento.</p>
+    <button class="ok" onclick="guardarObs(${c.id})">Guardar observaciones</button></div>`;
+}
+function guardarObs(id){
+  S.fichas[id] = Object.assign({}, S.fichas[id], {obs: st.obs || ''});
+  guardar(); flash('Observaciones guardadas.'); render();
+}
+
+/* =====================================================
+   4. SEGUIMIENTO
+   ===================================================== */
+function motivoSeguimiento(c){
+  if (enPausa(c) || c.diaVisita == null) return null;
+  const o = ordenes(c), ult = ultimaFecha(c.diaVisita), prev = sumarDias(ult, -7);
+  if (!o.some(x => x.fecha > prev)) return {tipo:'nopidio', texto:`No pidió para su visita del ${DIAS[c.diaVisita]} ${fmtFecha(ult)}`};
+  if (o.length >= 2){
+    const a = o[o.length - 1], b = o[o.length - 2];
+    if (a.items.length < b.items.length) return {tipo:'menos', texto:`Pidió menos: ${a.items.length} productos (antes ${b.items.length})`};
+  }
+  return null;
+}
+function rSeguir(){
+  const lista = clientesTodos().map(c => ({c, m: motivoSeguimiento(c)})).filter(x => x.m);
+  return `<h1>Seguimiento</h1>
+  <div class="warn"><b>Criterios de demo.</b> Los criterios reales se definen con datos reales.</div>
+  <p class="muted">No pidió: no hizo pedido desde su visita anterior y ya pasó su último día de visita. Pidió menos: el último pedido tiene menos productos que el anterior.</p>
+  ${lista.length ? lista.map(x => `<div class="card"><div class="line" style="border:0;padding:0"><span><b>${esc(x.c.nombre)}</b><br><span class="muted">${esc(x.m.texto)}</span></span>
+    <span class="tag ${x.m.tipo === 'nopidio' ? 'bad' : 'av'}">${x.m.tipo === 'nopidio' ? 'No pidió' : 'Pidió menos'}</span></div>
+    <div class="gap"></div><button onclick="armarMensaje(${x.c.id},'seg')">Armar mensaje</button></div>`).join('') : '<div class="card muted">No hay clientes para contactar.</div>'}`;
+}
+function armarMensaje(cid, tipo){ st.m = {tipo, cid, texto:plantilla(tipo, clienteDe(cid))}; go('mensajes'); }
+
+/* =====================================================
+   5. MENSAJES
+   ===================================================== */
+const TIPOS = {dia:'Día anterior a la visita', seg:'Seguimiento'};
+function plantilla(tipo, c){
+  const link = new URL('pedido.html', location.href).href;
+  return tipo === 'dia'
+    ? `Hola ${c.nombre}. Mañana pasamos por tu negocio. ¿Qué vas a necesitar? Podés armar tu pedido o avisar tu pago acá: ${link}`
+    : `Hola ${c.nombre}. Hace unos días que no recibimos tu pedido. ¿Querés que te pasemos lo de siempre? Armalo acá: ${link}`;
+}
+// Un cliente que no ve montos nunca debe recibir importes
+function conMontos(c, texto){ return !c.ve_monto && /\$|\d{3,}/.test(texto.replace(/https?:\/\/\S+/g, '')); }
+function rMensajes(){
+  const todos = clientesTodos(), manana = (new Date().getDay() + 1) % 7;
+  if (!st.m.cid || !clienteDe(st.m.cid)) st.m.cid = (todos.find(c => c.diaVisita === manana) || todos[0]).id;
+  const c = clienteDe(st.m.cid);
+  if (!st.m.texto) st.m.texto = plantilla(st.m.tipo, c);
+  const hist = S.mensajes.slice(0, 15);
+  return `<h1>Mensajes</h1>
+  <p class="muted">Demo: no se envía nada. El mensaje se copia y se marca como enviado.</p>
+  <div class="seg"><button class="${st.m.tipo==='dia'?'on':''}" onclick="cambiarPlantilla('dia')">Día anterior</button><button class="${st.m.tipo==='seg'?'on':''}" onclick="cambiarPlantilla('seg')">Seguimiento</button></div>
+  <label for="m-cli">Cliente</label>
+  <select id="m-cli" onchange="st.m.cid=+this.value;st.m.texto=plantilla(st.m.tipo,clienteDe(st.m.cid));render()">${todos.map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.nombre)}${x.diaVisita === manana ? ' (mañana tiene visita)' : ''}</option>`).join('')}</select>
+  <label for="m-texto">Mensaje (podés editarlo)</label>
+  <textarea id="m-texto" oninput="st.m.texto=this.value;pintarMsg()">${esc(st.m.texto)}</textarea>
+  <div class="wa"><div class="bubble" id="m-burbuja"></div></div>
+  <div id="m-aviso"></div>
+  <div class="row"><button id="m-copiar" class="sec" onclick="copiarMsg()">Copiar texto</button><button id="m-enviado" class="ok" onclick="marcarEnviado()">Marcar como enviado</button></div>
+  <h2>Historial de mensajes</h2>
+  <div class="card">${hist.length ? hist.map(m => `<div class="line"><span><b>${esc(nombreCli(m.clienteId))}</b><br><span class="muted">${TIPOS[m.tipo]}</span></span><span class="muted">${fmtFechaHora(m.ts)}</span></div>`).join('') : '<span class="muted">Todavía no se marcó ningún mensaje como enviado.</span>'}</div>`;
+}
+function cambiarPlantilla(t){ st.m.tipo = t; st.m.texto = plantilla(t, clienteDe(st.m.cid)); render(); }
+function pintarMsg(){
+  const c = clienteDe(st.m.cid), b = document.getElementById('m-burbuja'); if (!b) return;
+  const hh = new Date(); b.innerHTML = esc(st.m.texto) + `<small>${pad2(hh.getHours())}:${pad2(hh.getMinutes())} ✓✓</small>`;
+  const malo = conMontos(c, st.m.texto);
+  document.getElementById('m-aviso').innerHTML = malo ? '<div class="warn">Este cliente no ve montos: sacá los importes del mensaje para poder enviarlo.</div>' : '';
+  document.getElementById('m-copiar').disabled = malo; document.getElementById('m-enviado').disabled = malo || !st.m.texto.trim();
+}
+function copiarMsg(){
+  const t = st.m.texto, ok = () => { flash('Texto copiado.'); render(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok).catch(() => fallbackCopiar(t, ok));
+  else fallbackCopiar(t, ok);
+}
+function fallbackCopiar(t, ok){
+  const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+  ta.remove(); ok();
+}
+function marcarEnviado(){
+  const c = clienteDe(st.m.cid); if (conMontos(c, st.m.texto) || !st.m.texto.trim()) return;
+  S.mensajes.unshift({id:nuevoId('m'), clienteId:c.id, tipo:st.m.tipo, ts:new Date().toISOString(), texto:st.m.texto});
+  guardar(); flash('Registrado en el historial de mensajes.'); st.m.texto = ''; render();
+}
+
+/* ---------- pantalla ---------- */
+function render(){
+  S = f2Load();
+  if (!S.seeded){ f2Sembrar(S); f2Save(S); }
+  const pend = pendientes().length;
+  document.getElementById('tabs').innerHTML = TABS.map(t => `<button class="${st.tab === t[0] ? 'on' : ''}" onclick="go('${t[0]}')"><span class="ic">${t[1]}</span>${t[2]}${t[0] === 'avisos' && pend ? `<span class="bdg">${pend}</span>` : ''}</button>`).join('');
+  const f = st.flash; st.flash = '';
+  const cuerpo = {cuentas:rCuentas, avisos:rAvisos, ficha:rFicha, seguir:rSeguir, mensajes:rMensajes}[st.tab]();
+  $app.innerHTML = (f ? `<div class="msg">${esc(f)}</div>` : '') + cuerpo;
+  if (st.tab === 'mensajes') pintarMsg();
+}
+// si el cliente avisa un pago en otra pestaña, se refresca al volver a esta
+window.addEventListener('focus', () => { if (!st.pf && !st.avAbierto && st.tab !== 'mensajes' && st.tab !== 'ficha') render(); });
+init();
+render();
+</script>
+</body>
+</html>

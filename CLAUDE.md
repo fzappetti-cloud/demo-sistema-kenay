@@ -6,7 +6,7 @@ Demo navegable para mostrar a Walter e Ivanna (Distribuidora Kenay) cómo se tra
 ## Reglas
 - Todo dato es **ficticio** y debe decir "DEMO" visible en pantalla.
 - No inventar funciones fuera de este documento.
-- Simple: una sola página web, sin backend, sin login. Guardar en `localStorage`.
+- Simple: páginas web estáticas (HTML + JavaScript), sin backend, sin login. Guardar en `localStorage`.
 - Pensado para **celular** (Walter carga y embala desde el teléfono). Botones grandes, letra legible.
 - Idioma: español rioplatense. Moneda: pesos argentinos.
 
@@ -105,3 +105,50 @@ Cobranza, stock, compras, rutas, recordatorios, seguimiento de clientes, WhatsAp
 
 ## Al terminar
 Explicar en 5 líneas cómo abrir el demo y cómo recorrer el flujo completo.
+
+---
+
+# Fase 2: Cobranza y CRM con mensajes (Demo 2)
+
+Se construye **sobre** el Demo 1, reutilizando sus clientes, productos, pedidos y estilo. No se rompió nada del Demo 1.
+
+## Archivos
+- `datos.js`: clientes, productos, íconos y utilidades **compartidos** por las tres páginas (no hay datos duplicados) + almacenamiento y datos de ejemplo de la Fase 2.
+- `cobranza.html`: lado distribuidora, 5 pestañas. Acceso desde la barra de arriba de las otras páginas ("💰 Cobranza y clientes").
+- `pedido.html`: lado cliente. Tras validar el negocio hay una pantalla de inicio con dos botones: **Hacer pedido** y **Avisar pago**.
+- `localStorage`: `demo-kenay-v1` (Demo 1: pedidos del día y clientes nuevos, igual que antes) y `demo-kenay-f2` (Fase 2: boletas, pagos, avisos, mensajes, observaciones).
+
+## Idea central del pago
+El cliente avisa su pago desde el sistema; Walter lo reconoce por el cliente (sin importar de qué cuenta salió), busca la transferencia en su billetera y confirma. **Solo al confirmar baja el saldo.** Estados del aviso: `Avisado` → `Confirmado`, o `Descartado`. Lo obligatorio para el cliente es lo más fácil de dar: el **monto**. El comprobante es opcional.
+
+## Lado cliente: "Avisar pago"
+- Monto (obligatorio, teclado numérico), fecha de la transferencia (hoy por defecto, no admite fechas futuras), "¿A nombre de quién salió la transferencia?" (opcional), comprobante (opcional: foto, captura o PDF, con vista previa).
+- Las imágenes se reducen solas (máx. 1000 px, JPEG). PDF: máximo 1 MB ("El archivo es muy pesado, probá con una captura"). Si `localStorage` se llena, se muestra un mensaje amable y la página no se rompe.
+- Mensaje final: "Listo, recibimos tu aviso. No tenés que hacer nada más."
+- **El lado cliente nunca muestra saldos ni deudas.**
+
+## Lado distribuidora (`cobranza.html`)
+1. **Cuenta corriente:** clientes ordenados por saldo (los de saldo cero, aparte). Detalle con boletas, pagos confirmados, "Avisado, sin confirmar" (no descuenta) y "Total a cobrar en la próxima visita" = saldo anterior + boleta nueva pendiente de entrega. "Registrar pago": efectivo o transferencia, total o parcial, fecha, y "Pagó a nombre de" (solo transferencia). Queda confirmado de inmediato.
+2. **Pagos avisados:** pendientes (con contador en la pestaña), detalle con comprobante en grande, corrección de monto y fecha, Confirmar uno o en bloque, Descartar, e historial aparte. Al confirmar se crea un pago por transferencia con la fecha de la transferencia.
+3. **Ficha de cliente:** datos, día de visita, lista de precios, `ve_monto`, historial de pedidos, pagos y saldo, **pagadores habituales** y **productos habituales** (calculados), y observaciones de texto libre.
+4. **Seguimiento:** lista calculada con "No pidió" y "Pidió menos". Cada fila tiene "Armar mensaje". Aviso visible: "Criterios de demo. Los criterios reales se definen con datos reales."
+5. **Mensajes:** plantillas "día anterior a la visita" y "seguimiento", con el nombre ya cargado y texto editable, vista previa tipo WhatsApp, "Copiar texto" y "Marcar como enviado" (queda en el historial). **No se envía nada real.**
+
+## Reglas de cálculo y decisiones tomadas
+- **Saldo = boletas entregadas − pagos confirmados.** Siempre se calcula, nunca se escribe a mano. Los avisos sin confirmar no descuentan.
+- Una boleta cuenta como **entregada cuando se confirma el cliente en el Demo 1**; así cada boleta del Demo 1 suma sola al saldo. Si después se destilda o se agrega algo al pedido, esa boleta deja de contar hasta volver a confirmar.
+- **Un cliente con `ve_monto = no` nunca ve montos**; ningún mensaje para él puede llevar importes (si se escribe uno, se bloquean "Copiar" y "Marcar como enviado").
+- **No pidió:** el cliente no tiene ningún pedido desde su visita anterior y ya pasó su último día de visita (el día de visita en sí todavía no cuenta). **Pidió menos:** el último pedido tiene menos productos distintos que el anterior. Los criterios usan la fecha de hoy, así que funcionan cualquier día.
+- Un cliente cuya observación dice "pausa/pausó" no aparece en Seguimiento. Los clientes sin día de visita (los dados de alta nuevos) tampoco.
+- Días de visita de ejemplo: Don Pedro lunes, La Esquina martes, Norte miércoles, Sol jueves, Los Pinos viernes.
+- Datos de ejemplo (fechas relativas a hoy): 2 semanas de pedidos y boletas; pago de contado (La Esquina y Los Pinos), por transferencia a nombre de un tercero (Don Pedro), parcial (Norte) y sin pagar (Sol); 3 avisos pendientes (uno con comprobante de ejemplo dibujado, uno sin comprobante con fecha de transferencia distinta, uno a nombre de un tercero). "Reiniciar datos de ejemplo" no borra los pedidos del Demo 1.
+- Un cliente nuevo (alta desde `pedido.html`) tiene lista A y `ve_monto = no` por defecto.
+
+## Criterios de aceptación de la Fase 2
+1. Un pago total deja el saldo en cero. 2. Un pago parcial reduce el saldo por el monto indicado. 3. Un pago por transferencia permite anotar "Pagó a nombre de" y se ve en el detalle. 4. El saldo siempre coincide con boletas menos pagos confirmados. 5. El cliente avisa un pago con solo el monto (fecha de hoy ya cargada), sin adjuntar nada y sin usuario nuevo. 6. El aviso aparece en "Pagos avisados" como Avisado, con su comprobante y su "a nombre de" si los trae. 7. Un aviso sin confirmar no cambia el saldo. 8. Walter puede corregir el monto y confirmar uno o varios avisos; al confirmar baja el saldo. 9. No se puede enviar un aviso sin monto ni con fecha futura. 10. Un aviso descartado no afecta el saldo. 11. La ficha muestra productos y pagadores habituales calculados. 12. Seguimiento lista al que no pidió y al que pidió menos, con su motivo. 13. Desde Seguimiento se llega al mensaje con el nombre cargado. 14. Marcar como enviado agrega una línea al historial. 15. Ningún mensaje para un cliente con `ve_monto = no` contiene montos, y el lado cliente no muestra saldos. 16. El Demo 1 sigue funcionando completo. 17. Todo se usa bien en celular.
+
+## Limitación conocida (no resolver en el demo)
+Sin servidor, el aviso del cliente **solo llega a la distribuidora si ambas páginas se abren en el mismo navegador y dispositivo** (comparten `localStorage`). La versión real necesita un servidor con base de datos y almacenamiento de imágenes.
+
+## Fuera de alcance de la Fase 2
+Stock y compras, envío real de WhatsApp, notificaciones a Walter cuando llega un aviso, lectura automática del comprobante, integración con bancos o billeteras, conciliación automática, rutas, facturación fiscal, usuarios y contraseñas, inteligencia artificial.
