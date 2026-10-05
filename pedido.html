@@ -22,11 +22,16 @@
   .tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 8px;border-radius:99px;background:#e8e4d8;color:#555}
   .fit{width:auto;flex:0 0 auto;min-height:40px;padding:6px 12px}
   .msg{background:#e9f7ef;border:2px solid var(--ok);border-radius:12px;padding:12px;margin-bottom:10px}
+  .rolebar{display:flex;background:#fff;border-bottom:1px solid var(--line)}
+  .rolebar a{flex:1;text-align:center;padding:12px 4px;text-decoration:none;color:var(--ink);font-weight:700;font-size:16px;border-bottom:4px solid transparent}
+  .rolebar a.on{border-bottom-color:var(--brand);color:var(--brand);background:#eef4fb}
+  @media print{.rolebar{display:none}}
   a{color:var(--brand);font-weight:700}
 </style>
 </head>
 <body>
 <div class="demo-bar">DEMO – datos ficticios – lado del CLIENTE</div>
+<div class="rolebar"><a href="pedido.html" class="on">👤 Soy el cliente</a><a href="index.html#lista" class="">🏭 Soy la distribuidora</a></div>
 <main id="app"></main>
 <script>
 const CLIENTES=[{id:1,nombre:'Almacén Don Pedro'},{id:2,nombre:'Kiosco La Esquina'},{id:3,nombre:'Despensa Norte'},{id:4,nombre:'Minimercado Sol'},{id:5,nombre:'Almacén Los Pinos'}];
@@ -53,8 +58,9 @@ function render(){
   const $=document.getElementById('app');
   if(d.enviado){
     $.innerHTML=`<div class="msg"><b>¡Pedido enviado!</b><br>${cli(d.enviado).nombre}, recibimos tu pedido. Lo vamos a preparar.</div>
-    <button onclick="d={clienteId:'',lineas:[],enviado:null};render()">Hacer otro pedido</button>
-    <p class="muted">Demo: el pedido ya aparece en la <a href="index.html">lista del día de la distribuidora</a> (mismo navegador).</p>`;
+    <a href="index.html#lista" style="text-decoration:none"><button class="ok">Ver cómo le llega a la distribuidora →</button></a>
+    <div style="height:8px"></div>
+    <button class="sec" onclick="d={clienteId:'',lineas:[],enviado:null};render()">Hacer otro pedido</button>`;
     return;
   }
   let h=`<h1>Hacé tu pedido</h1>
