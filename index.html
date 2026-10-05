@@ -96,7 +96,8 @@ const PRODUCTOS = [
 const KEY = 'demo-kenay-v1';
 const $app = document.getElementById('app');
 const fmt = n => '$ ' + Math.round(n).toLocaleString('es-AR');
-const cli = id => CLIENTES.find(c => c.id === id);
+const todos = () => CLIENTES.concat((db && db.clientes) || []);
+const cli = id => todos().find(c => c.id === id);
 const prod = id => PRODUCTOS.find(p => p.id === id);
 
 function load(){
@@ -144,7 +145,7 @@ function renderCargar(){
     <label for="cli">Cliente</label>
     <select id="cli" onchange="draft.clienteId=this.value;render()">
       <option value="">— Elegir cliente —</option>
-      ${CLIENTES.map(x=>`<option value="${x.id}" ${+draft.clienteId===x.id?'selected':''}>${x.nombre}</option>`).join('')}
+      ${todos().map(x=>`<option value="${x.id}" ${+draft.clienteId===x.id?'selected':''}>${x.nombre}</option>`).join('')}
     </select>
     <label class="check"><input type="checkbox" ${draft.tardio?'checked':''} onchange="draft.tardio=this.checked;render()"> Pedido tardío (madrugada)</label>
   </div>`;
@@ -218,7 +219,7 @@ function renderLista(){
   db.pedidos.forEach(ped=>{
     const c = cli(ped.clienteId), e = estadoPedido(ped);
     h += `<button class="client" onclick="go('embalaje',${c.id})">
-      <span><b>${c.nombre}</b> ${ped.tardio?'<span class="tag new">NUEVO</span>':''}${ped.origen==='cliente'?' <span class="tag ej">Del cliente</span>':''}<br>
+      <span><b>${c.nombre}</b> ${ped.tardio?'<span class="tag new">NUEVO</span>':''}${ped.origen==='cliente'?' <span class="tag ej">Del cliente</span>':''}${c.nuevo?' <span class="tag new">Cliente nuevo</span>':''}<br>
       <span class="muted">${ped.items.length} ítem(s)</span></span>
       <span class="tag s${e}">${ESTADOS[e]}</span></button>`;
   });

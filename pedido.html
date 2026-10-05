@@ -19,6 +19,9 @@
   .line{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
   .line:last-child{border-bottom:0}
   .muted{color:var(--muted);font-size:15px}
+  input[type=text],input[type=tel]{width:100%;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .chip{display:inline-block;background:#e8e4d8;border:0;border-radius:99px;padding:8px 12px;margin:4px 4px 0 0;font-size:15px;width:auto;min-height:0;color:var(--ink);font-weight:600}
+  .warn{background:#fff8e6;border:2px solid #c77700;border-radius:12px;padding:12px;margin-bottom:10px}
   .tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 8px;border-radius:99px;background:#e8e4d8;color:#555}
   .fit{width:auto;flex:0 0 auto;min-height:40px;padding:6px 12px}
   .msg{background:#e9f7ef;border:2px solid var(--ok);border-radius:12px;padding:12px;margin-bottom:10px}
@@ -34,7 +37,12 @@
 <div class="rolebar"><a href="pedido.html" class="on">👤 Soy el cliente</a><a href="index.html#lista" class="">🏭 Soy la distribuidora</a></div>
 <main id="app"></main>
 <script>
-const CLIENTES=[{id:1,nombre:'Almacén Don Pedro'},{id:2,nombre:'Kiosco La Esquina'},{id:3,nombre:'Despensa Norte'},{id:4,nombre:'Minimercado Sol'},{id:5,nombre:'Almacén Los Pinos'}];
+const CLIENTES=[
+ {id:1,nombre:'Almacén Don Pedro',dni:'11.111.111'},
+ {id:2,nombre:'Kiosco La Esquina',dni:'22.222.222'},
+ {id:3,nombre:'Despensa Norte',dni:'33.333.333'},
+ {id:4,nombre:'Minimercado Sol',dni:'44.444.444'},
+ {id:5,nombre:'Almacén Los Pinos',dni:'55.555.555'}];
 const PRODUCTOS=[
  {id:1,nombre:'Papel higiénico (pack)',forma:'bulto'},{id:2,nombre:'Rollos de cocina',forma:'bulto'},
  {id:3,nombre:'Harina común 1 kg',forma:'bulto'},{id:4,nombre:'Harina leudante 1 kg',forma:'unidad'},
@@ -43,8 +51,13 @@ const PRODUCTOS=[
  {id:9,nombre:'Fideos 500 g',forma:'bulto'},{id:10,nombre:'Aceite 900 ml',forma:'unidad'},
  {id:11,nombre:'Yerba 1 kg',forma:'unidad'},{id:12,nombre:'Gaseosa 1,5 L',forma:'bulto'}];
 const KEY='demo-kenay-v1';
-const prod=id=>PRODUCTOS.find(p=>p.id===id), cli=id=>CLIENTES.find(c=>c.id===id);
+const prod=id=>PRODUCTOS.find(p=>p.id===id);
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||{pedidos:[]}}catch(e){return {pedidos:[]}}}
+function save(db){try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}}
+const todos=()=>CLIENTES.concat(load().clientes||[]);
+const cli=id=>todos().find(c=>c.id===id);
+const soloDigitos=s=>String(s||'').replace(/\D/g,'');
+const fmtDni=s=>soloDigitos(s).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 function cantLabel(p,q){
   if(p.forma==='unidad')return q+(q===1?' unidad':' unidades');
   if(q===0.5)return 'medio bulto'; return q===1?'1 bulto':q+' bultos';
@@ -53,38 +66,81 @@ function opciones(p){
   const v=p.forma==='bulto'?[1,0.5,2,3,4,5,6,8,10]:[1,2,3,4,5,6,8,10,12,24];
   return v.map(x=>`<option value="${x}">${cantLabel(p,x)}</option>`).join('');
 }
-let d={clienteId:'',lineas:[],enviado:null};
+// paso: 'ident' (validar negocio) | 'alta' (carga inicial) | 'pedido' | 'enviado'
+let d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:''};
+const $=()=>document.getElementById('app');
+
 function render(){
-  const $=document.getElementById('app');
-  if(d.enviado){
-    $.innerHTML=`<div class="msg"><b>¡Pedido enviado!</b><br>${cli(d.enviado).nombre}, recibimos tu pedido. Lo vamos a preparar.</div>
-    <a href="index.html#lista" style="text-decoration:none"><button class="ok">Ver cómo le llega a la distribuidora →</button></a>
-    <div style="height:8px"></div>
-    <button class="sec" onclick="d={clienteId:'',lineas:[],enviado:null};render()">Hacer otro pedido</button>`;
-    return;
-  }
-  let h=`<h1>Hacé tu pedido</h1>
-  <div class="card"><label for="cli">¿Quién sos?</label>
-  <select id="cli" onchange="d.clienteId=this.value;render()">
-    <option value="">— Elegí tu negocio —</option>
-    ${CLIENTES.map(c=>`<option value="${c.id}" ${+d.clienteId===c.id?'selected':''}>${c.nombre}</option>`).join('')}
-  </select></div>`;
-  if(d.clienteId){
-    h+=`<div class="card"><label for="prod">Producto <span class="tag">ejemplo</span></label>
+  if(d.paso==='ident')return renderIdent();
+  if(d.paso==='alta')return renderAlta();
+  if(d.paso==='enviado')return renderEnviado();
+  renderPedido();
+}
+function renderIdent(){
+  $().innerHTML=`<h1>Validá tu negocio</h1>
+  <div class="card"><label for="dni">DNI del titular del negocio <span class="tag">ficticio</span></label>
+    <input id="dni" type="tel" inputmode="numeric" placeholder="12.345.678" value="${d.dni}" oninput="d.dni=this.value;d.noEncontrado=false">
+    <div style="height:10px"></div>
+    <button onclick="validar()">Validar mi negocio</button>
+    <p class="muted">Para la demo, tocá uno de estos DNI de ejemplo:</p>
+    <div>${CLIENTES.map(c=>`<button class="chip" onclick="d.dni='${c.dni}';d.noEncontrado=false;render()">${c.nombre}</button>`).join('')}</div>
+  </div>
+  ${d.noEncontrado?`<div class="warn"><b>No encontramos ese DNI.</b><br>Si es la primera vez que pedís, cargá los datos de tu negocio.
+    <div style="height:10px"></div><button onclick="irAlta()">Cargar mi negocio por primera vez</button></div>`:''}`;
+}
+function validar(){
+  const x=soloDigitos(d.dni);
+  const c=todos().find(c=>soloDigitos(c.dni)===x);
+  if(c&&x){d.clienteId=c.id;d.paso='pedido';d.noEncontrado=false;}
+  else d.noEncontrado=true;
+  render();
+}
+function irAlta(){d.paso='alta';d.error='';render();}
+function renderAlta(){
+  $().innerHTML=`<h1>Cargá tu negocio</h1>
+  <div class="card">
+    <label for="n">Nombre del negocio</label><input id="n" type="text" value="${d.alta.nombre}" oninput="d.alta.nombre=this.value">
+    <label for="c">DNI del titular <span class="tag">ficticio</span></label><input id="c" type="tel" inputmode="numeric" value="${d.dni}" oninput="d.dni=this.value">
+    <label for="t">Teléfono</label><input id="t" type="tel" value="${d.alta.tel}" oninput="d.alta.tel=this.value">
+    <label for="di">Dirección de entrega</label><input id="di" type="text" value="${d.alta.dir}" oninput="d.alta.dir=this.value">
+    ${d.error?`<p style="color:var(--bad);font-weight:700">${d.error}</p>`:''}
+    <div style="height:10px"></div><button class="ok" onclick="guardarAlta()">Guardar mi negocio</button>
+    <div style="height:8px"></div><button class="sec" onclick="d.paso='ident';render()">Volver</button>
+  </div>
+  <p class="muted">La distribuidora va a ver tu negocio como "Cliente nuevo" para validarlo.</p>`;
+}
+function guardarAlta(){
+  const x=soloDigitos(d.dni);
+  if(!d.alta.nombre.trim()||(x.length<7||x.length>8)||!d.alta.tel.trim()||!d.alta.dir.trim()){
+    d.error='Completá todos los datos. El DNI debe tener 7 u 8 números.';return render();}
+  if(todos().some(c=>soloDigitos(c.dni)===x)){d.error='Ese DNI ya está cargado: volvé y validalo.';return render();}
+  const db=load(); db.clientes=db.clientes||[];
+  const id=100+db.clientes.length+1;
+  db.clientes.push({id,nombre:d.alta.nombre.trim(),dni:fmtDni(d.dni),tel:d.alta.tel.trim(),dir:d.alta.dir.trim(),lista:'A',ve_monto:false,nuevo:true});
+  save(db);
+  d.clienteId=id;d.paso='pedido';render();
+}
+function renderPedido(){
+  const c=cli(d.clienteId);
+  let h=`<div class="msg">✔ Negocio validado: <b>${c.nombre}</b>${c.nuevo?' <span class="tag">Cliente nuevo</span>':''}<br>
+    <span class="muted">DNI ${c.dni}</span>
+    <div><a href="#" onclick="cambiar();return false">No soy yo / cambiar</a></div></div>
+  <h1>Hacé tu pedido</h1>
+  <div class="card"><label for="prod">Producto <span class="tag">ejemplo</span></label>
     <select id="prod" onchange="document.getElementById('cant').innerHTML=opciones(prod(+this.value))">
       ${PRODUCTOS.map(p=>`<option value="${p.id}">${p.nombre} (${p.forma})</option>`).join('')}
     </select>
     <label for="cant">Cantidad</label><select id="cant">${opciones(PRODUCTOS[0])}</select>
     <div style="height:10px"></div><button onclick="agregar()">+ Agregar</button></div>`;
-  }
   if(d.lineas.length){
     h+=`<div class="card"><b>Tu pedido</b>`+d.lineas.map((l,i)=>{const p=prod(l.productoId);
       return `<div class="line"><span>${p.nombre}<br><span class="muted">${cantLabel(p,l.cant)}</span></span>
       <button class="bad fit" onclick="d.lineas.splice(${i},1);render()">Quitar</button></div>`}).join('')+`</div>
     <button class="ok" onclick="enviar()">Enviar pedido</button>`;
   }
-  $.innerHTML=h;
+  $().innerHTML=h;
 }
+function cambiar(){d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:''};render();}
 function agregar(){
   const productoId=+document.getElementById('prod').value, cant=+document.getElementById('cant').value;
   const ex=d.lineas.find(l=>l.productoId===productoId);
@@ -92,16 +148,21 @@ function agregar(){
   render();
 }
 function enviar(){
-  const db=load(), cid=+d.clienteId;
+  const db=load(), cid=d.clienteId;
   let ped=db.pedidos.find(p=>p.clienteId===cid);
   if(!ped){ped={clienteId:cid,items:[],tardio:false,confirmado:false,origen:'cliente'};db.pedidos.push(ped);}
   d.lineas.forEach(l=>{
     const ex=ped.items.find(i=>i.productoId===l.productoId&&i.estado==='pend');
     if(ex)ex.cant+=l.cant; else ped.items.push({productoId:l.productoId,cant:l.cant,estado:'pend'});
   });
-  ped.confirmado=false;
-  try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}
-  d.enviado=cid; d.lineas=[]; render();
+  ped.confirmado=false; save(db);
+  d.lineas=[]; d.paso='enviado'; render();
+}
+function renderEnviado(){
+  $().innerHTML=`<div class="msg"><b>¡Pedido enviado!</b><br>${cli(d.clienteId).nombre}, recibimos tu pedido. Lo vamos a preparar.</div>
+  <a href="index.html#lista" style="text-decoration:none"><button class="ok">Ver cómo le llega a la distribuidora →</button></a>
+  <div style="height:8px"></div>
+  <button class="sec" onclick="d.paso='pedido';render()">Hacer otro pedido</button>`;
 }
 render();
 </script>

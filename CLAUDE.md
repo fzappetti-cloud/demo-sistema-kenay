@@ -16,7 +16,7 @@ Hoy Walter lee WhatsApp y escribe a mano una boleta inicial (23:00 a 04:00, y ot
 ## Pantallas (4 del lado de la distribuidora + 1 del lado del cliente)
 
 ### 0. Página del cliente (`pedido.html`)
-- Página aparte donde **el cliente de Walter carga su propio pedido**: elige su negocio (los 5 clientes ficticios, sin login), agrega productos y cantidades (misma forma de venta: `unidad` / `bulto`) y toca "Enviar pedido".
+- Página aparte donde **el cliente de Walter carga su propio pedido**: **valida su negocio con el DNI del titular** (dato ficticio que ya está asociado a cada uno de los 5 clientes; sin login ni contraseña). Si el DNI no está cargado, la página ofrece la **carga inicial del negocio** (nombre, DNI, teléfono, dirección de entrega): queda guardado como cliente nuevo (lista A, no ve monto, por defecto) y a Walter le aparece con la etiqueta "Cliente nuevo" para validarlo. Después agrega productos y cantidades (misma forma de venta: `unidad` / `bulto`) y toca "Enviar pedido".
 - No muestra precios.
 - El pedido queda **impactado** en la "Lista del día" de Walter con la etiqueta "Del cliente", sin que Walter lo cargue de nuevo. Desde ahí sigue el flujo normal: embalaje → boleta.
 - Si el cliente ya tenía pedido ese día, lo que envía se suma al mismo.
@@ -55,13 +55,13 @@ Hoy Walter lee WhatsApp y escribe a mano una boleta inicial (23:00 a 04:00, y ot
 ## Datos de demo (ficticios)
 
 ### Clientes
-| Cliente | Lista de precio | ve_monto |
-|---|---|---|
-| Almacén Don Pedro | A | no |
-| Kiosco La Esquina | B | sí (paga contado) |
-| Despensa Norte | A | no |
-| Minimercado Sol | B | no |
-| Almacén Los Pinos | A | sí (paga contado) |
+| Cliente | DNI titular (ficticio) | Lista de precio | ve_monto |
+|---|---|---|---|
+| Almacén Don Pedro | 11.111.111 | A | no |
+| Kiosco La Esquina | 22.222.222 | B | sí (paga contado) |
+| Despensa Norte | 33.333.333 | A | no |
+| Minimercado Sol | 44.444.444 | B | no |
+| Almacén Los Pinos | 55.555.555 | A | sí (paga contado) |
 
 ### Productos (marcar como "ejemplo")
 | Producto | Forma de venta | Precio lista A | Precio lista B |
@@ -90,6 +90,7 @@ Precio del bulto = precio por bulto completo; medio bulto = la mitad.
 6. La boleta no incluye los faltantes.
 7. Funciona bien en pantalla de celular.
 8. Un pedido enviado desde `pedido.html` aparece en la lista del día de Walter sin recargarlo a mano.
+9. Si el DNI no está cargado, el cliente puede cargar su negocio y seguir con su pedido; a Walter le aparece como "Cliente nuevo".
 
 ## Fuera de alcance (no construir)
 Cobranza, stock, compras, rutas, recordatorios, seguimiento de clientes, WhatsApp automático, facturación fiscal, usuarios y contraseñas.
