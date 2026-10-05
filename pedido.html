@@ -50,6 +50,10 @@
   .prev{margin-top:8px;display:flex;align-items:center;gap:10px}
   .prev img{max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--line)}
   .err{color:var(--bad);font-weight:700;margin:8px 0}
+  .chk{display:flex;gap:12px;align-items:center;font-weight:500;margin:8px 0;padding:10px;border:2px solid var(--line);border-radius:12px;background:#fff}
+  .chk input{width:30px;height:30px;flex:0 0 auto}
+  .chk.off{opacity:.55}
+  .grande2{font-size:24px;font-weight:800;margin:10px 0 0}
   a{color:var(--brand);font-weight:700}
 </style>
 </head>
@@ -83,9 +87,9 @@ function tablero(lineas){
       <div class="step"><button onclick="cambiarCant(${p.id},-1)" ${q?'':'disabled'}>−</button><select onchange="fijarCant(${p.id},+this.value)" aria-label="Cantidad de ${p.nombre}">${opcionesTile(p,q)}</select><button class="plus" onclick="cambiarCant(${p.id},1)">+</button></div></div>`;
   }).join('')+'</div>';
 }
-// paso: 'ident' (validar negocio) | 'alta' (carga inicial) | 'inicio' | 'pedido' | 'enviado' | 'aviso' | 'avisoOk'
+// paso: 'ident' (validar negocio) | 'alta' (carga inicial) | 'inicio' | 'pedido' | 'enviado' | 'cuenta' | 'avisoOk'
 let infoLimpio='';
-let d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:'',av:null};
+let d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:'',mc:null};
 const $=()=>document.getElementById('app');
 
 function render(){
@@ -93,7 +97,7 @@ function render(){
   if(d.paso==='alta')return renderAlta();
   if(d.paso==='enviado')return renderEnviado();
   if(d.paso==='inicio')return renderInicio();
-  if(d.paso==='aviso')return renderAviso();
+  if(d.paso==='cuenta')return renderCuenta();
   if(d.paso==='avisoOk')return renderAvisoOk();
   renderPedido();
 }
@@ -175,40 +179,70 @@ function renderInicio(){
   $().innerHTML=`${bannerNegocio()}
   <h1>¿Qué querés hacer?</h1>
   <button class="big" onclick="d.paso='pedido';render()"><span class="ic">🛒</span><span>Hacer pedido<small>Elegí lo que necesitás</small></span></button>
-  <button class="big ok" onclick="abrirAviso()"><span class="ic">💵</span><span>Avisar pago<small>Contanos que transferiste</small></span></button>`;
+  <button class="big ok" onclick="abrirCuenta()"><span class="ic">💵</span><span>Mi cuenta<small>Mirá tus boletas y avisá tu pago</small></span></button>`;
 }
 
-/* ---------- Avisar pago ---------- */
-function abrirAviso(){d.av={monto:'',fecha:hoyISO(),nombre:'',comp:null,err:''};d.paso='aviso';render();}
+/* ---------- Mi cuenta ---------- */
+function abrirCuenta(){d.mc={sel:new Set(),parcial:false,monto:'',fecha:hoyISO(),nombre:'',comp:null,err:''};d.paso='cuenta';render();}
 function montoNum(s){return parseInt(soloDigitos(s),10)||0;}
-function renderAviso(){
-  const a=d.av;
-  $().innerHTML=`<button class="sec" onclick="d.paso='inicio';render()">← Volver al inicio</button>
-  <h1>Avisar pago</h1>
-  <div class="card">
-    <label for="av-monto">¿Cuánto pagaste? (en pesos)</label>
-    <input id="av-monto" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 50000" value="${esc(a.monto)}" oninput="d.av.monto=this.value">
-    <label for="av-fecha">Fecha de la transferencia</label>
-    <input id="av-fecha" type="date" max="${hoyISO()}" value="${esc(a.fecha)}" onchange="d.av.fecha=this.value">
-    <label for="av-nombre">¿A nombre de quién salió la transferencia?</label>
-    <input id="av-nombre" type="text" placeholder="(opcional)" value="${esc(a.nombre)}" oninput="d.av.nombre=this.value">
-    <p class="ayuda">Solo si la hizo otra persona (hijo, esposa, etc.)</p>
-    <label for="av-file">Comprobante</label>
-    <p class="ayuda" style="margin-bottom:6px">Si lo tenés a mano, podés adjuntarlo (no es obligatorio)</p>
-    <input id="av-file" type="file" accept="image/*,application/pdf" onchange="elegirArchivo(this)">
-    <div id="av-prev" class="prev"></div>
-    <div id="av-err" class="err">${esc(a.err)}</div>
-    <button class="ok" onclick="enviarAviso()">Enviar aviso</button>
-  </div>`;
+function mcBoleta(id){const m=d.mc;m.sel.has(id)?m.sel.delete(id):m.sel.add(id);m.err='';render();}
+function mcParcial(){const m=d.mc;m.parcial=!m.parcial;m.sel=new Set();m.monto='';m.err='';render();}
+function mcAvisar(infos){ // lo que se va a avisar según lo elegido
+  const m=d.mc;
+  return m.parcial?montoNum(m.monto):infos.filter(i=>m.sel.has(i.b.id)&&i.disponible>0).reduce((t,i)=>t+i.disponible,0);
+}
+function mcActualizar(){
+  const el=document.getElementById('mc-total'); if(!el)return;
+  el.textContent=fmt(mcAvisar(infosDe(f2Load(),d.clienteId))); setErr('');
+}
+function estadoAviso(a){
+  if(a.estado==='confirmado')return ['Pago confirmado el '+fmtFecha(isoDe(new Date(a.resueltoAt))),'ok'];
+  if(a.estado==='descartado')return ['No pudimos verificar este pago. Comunicate con la distribuidora.','bad'];
+  return ['Lo estamos verificando','av'];
+}
+function renderCuenta(){
+  const s=f2Load(),cid=d.clienteId,infos=infosDe(s,cid),debe=infos.filter(i=>i.resta>0),m=d.mc;
+  const disp=infos.reduce((t,i)=>t+i.disponible,0), hay=m.parcial||m.sel.size>0;
+  let h=`<button class="sec" onclick="d.paso='inicio';render()">← Volver al inicio</button><h1>Mi cuenta</h1>`;
+  if(!debe.length) h+=`<div class="msg"><b>No debés nada. ¡Gracias!</b></div>`;
+  else{
+    h+=`<div class="card"><b>Boletas para pagar</b>`+debe.map(i=>{
+      const bloq=i.avisado>0, off=bloq||m.parcial;
+      return `<label class="chk ${off?'off':''}">${bloq?'':`<input type="checkbox" ${m.sel.has(i.b.id)?'checked':''} ${m.parcial?'disabled':''} onchange="mcBoleta('${i.b.id}')">`}
+        <span>${fmtFecha(i.b.fecha)} · <span class="muted">${i.etiqueta}</span><br><b>${fmt(i.resta)}</b>${i.pagado>0?' <span class="muted">(lo que resta)</span>':''}
+        ${bloq?'<br><span class="muted">Pago avisado. Lo estamos verificando.</span>':''}</span></label>`;
+    }).join('')
+    +`<label class="chk ${disp<=0?'off':''}"><input type="checkbox" ${m.parcial?'checked':''} ${disp<=0?'disabled':''} onchange="mcParcial()"><span><b>Pago parcial (otro monto)</b></span></label></div>`;
+    if(hay){
+      h+=`<div class="card"><p class="grande2" style="margin-top:0">Vas a avisar: <span id="mc-total">${fmt(mcAvisar(infos))}</span></p>
+      ${m.parcial?`<label for="mc-monto">¿Cuánto pagaste? (en pesos)</label>
+        <input id="mc-monto" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 20000" value="${esc(m.monto)}" oninput="d.mc.monto=this.value;mcActualizar()">`:''}
+      <label for="av-fecha">Fecha de la transferencia</label>
+      <input id="av-fecha" type="date" max="${hoyISO()}" value="${esc(m.fecha)}" onchange="d.mc.fecha=this.value">
+      <label for="av-nombre">¿A nombre de quién salió la transferencia?</label>
+      <input id="av-nombre" type="text" placeholder="(opcional)" value="${esc(m.nombre)}" oninput="d.mc.nombre=this.value">
+      <p class="ayuda">Solo si la hizo otra persona (hijo, esposa, etc.)</p>
+      <label for="av-file">Comprobante</label>
+      <p class="ayuda" style="margin-bottom:6px">Si lo tenés a mano, podés adjuntarlo (no es obligatorio)</p>
+      <input id="av-file" type="file" accept="image/*,application/pdf" onchange="elegirArchivo(this)">
+      <div id="av-prev" class="prev"></div>
+      <div id="av-err" class="err">${esc(m.err)}</div>
+      <button class="ok" onclick="enviarAviso()">Avisar pago</button></div>`;
+    }
+  }
+  const ult=s.avisos.filter(a=>a.clienteId===cid).sort((a,b)=>a.enviadoAt<b.enviadoAt?1:-1).slice(0,5);
+  h+=`<div class="card"><b>Estado de mis pagos</b>`+(ult.length?ult.map(a=>{const [t,c]=estadoAviso(a);
+    return `<div class="line"><span>${fmtFecha(a.fechaTransf)} · <b>${fmt(a.monto)}</b><br><span class="${c==='bad'?'err':'muted'}" style="${c==='bad'?'margin:0;font-weight:600':''}">${esc(t)}</span></span></div>`;}).join(''):'<p class="muted">Todavía no avisaste ningún pago.</p>')+`</div>`;
+  $().innerHTML=h;
   pintarPrev();
 }
 function pintarPrev(){
   const el=document.getElementById('av-prev'); if(!el)return;
-  const c=d.av.comp;
+  const c=d.mc.comp;
   el.innerHTML=!c?'':(c.tipo==='img'?`<img src="${c.data}" alt="Vista previa del comprobante">`:`<span>📄 ${esc(c.nombre)}</span>`)
-    +(c?` <button class="sec fit" onclick="d.av.comp=null;document.getElementById('av-file').value='';pintarPrev()">Quitar</button>`:'');
+    +(c?` <button class="sec fit" onclick="d.mc.comp=null;document.getElementById('av-file').value='';pintarPrev()">Quitar</button>`:'');
 }
-function setErr(t){d.av.err=t;const e=document.getElementById('av-err');if(e)e.textContent=t;}
+function setErr(t){d.mc.err=t;const e=document.getElementById('av-err');if(e)e.textContent=t;}
 function procesarArchivo(file){
   return new Promise((res,rej)=>{
     if(file.type==='application/pdf'||/\.pdf$/i.test(file.name)){
@@ -233,31 +267,46 @@ function procesarArchivo(file){
 }
 function elegirArchivo(inp){
   const f=inp.files&&inp.files[0]; if(!f)return;
-  procesarArchivo(f).then(c=>{d.av.comp=c;setErr('');pintarPrev();})
+  procesarArchivo(f).then(c=>{d.mc.comp=c;setErr('');pintarPrev();})
   .catch(e=>{
-    d.av.comp=null;inp.value='';pintarPrev();
+    d.mc.comp=null;inp.value='';pintarPrev();
     setErr(e.message==='pesado'?'El archivo es muy pesado, probá con una captura':'No pudimos leer ese archivo. Probá con una foto o una captura.');
   });
 }
 function enviarAviso(){
-  const a=d.av,monto=montoNum(a.monto);
-  if(!monto)return setErr('Escribí cuánto pagaste.');
-  if(!a.fecha)return setErr('Elegí la fecha de la transferencia.');
-  if(a.fecha>hoyISO())return setErr('La fecha no puede ser futura.');
-  const s=f2Load();
-  s.avisos.push({id:nuevoId('av'),clienteId:d.clienteId,monto,fechaTransf:a.fecha,aNombreDe:a.nombre.trim(),
-    comprobante:a.comp,enviadoAt:new Date().toISOString(),estado:'avisado',origen:'cliente'});
-  if(!f2Save(s)){
-    return setErr(a.comp?'No hay lugar para guardar el comprobante. Probá enviar el aviso sin adjuntarlo.':'No pudimos guardar el aviso porque no hay espacio. Avisale a la distribuidora.');
+  const m=d.mc,s=f2Load(),infos=infosDe(s,d.clienteId);
+  const disp=infos.reduce((t,i)=>t+i.disponible,0);
+  let asign,monto;
+  if(m.parcial){
+    if(/-/.test(m.monto))return setErr('El monto no puede ser negativo.');
+    monto=montoNum(m.monto);
+    if(monto<=0)return setErr('Escribí cuánto pagaste.');
+    if(monto>disp)return setErr('No podés avisar más de lo que debés ('+fmt(disp)+').');
+    asign=asignarAntigua(infos,monto,true);
+    if(!asign)return setErr('No podés avisar más de lo que debés ('+fmt(disp)+').');
+  }else{
+    const el=infos.filter(i=>m.sel.has(i.b.id)&&i.disponible>0);
+    if(!el.length)return setErr('Elegí qué boleta pagás o usá pago parcial.');
+    asign=el.map(i=>({boletaId:i.b.id,monto:i.disponible}));
+    monto=asign.reduce((t,x)=>t+x.monto,0);
   }
-  d.av=null;d.paso='avisoOk';render();
+  if(!m.fecha)return setErr('Elegí la fecha de la transferencia.');
+  if(m.fecha>hoyISO())return setErr('La fecha no puede ser futura.');
+  s.avisos.push({id:nuevoId('av'),clienteId:d.clienteId,modo:m.parcial?'parcial':'boletas',asign,monto,fechaTransf:m.fecha,aNombreDe:m.nombre.trim(),
+    comprobante:m.comp,enviadoAt:new Date().toISOString(),estado:'avisado',origen:'cliente'});
+  if(!f2Save(s)){
+    return setErr(m.comp?'No hay lugar para guardar el comprobante. Probá avisar el pago sin adjuntarlo.':'No pudimos guardar el aviso porque no hay espacio. Avisale a la distribuidora.');
+  }
+  d.mc=null;d.paso='avisoOk';render();
 }
 function renderAvisoOk(){
-  $().innerHTML=`<div class="msg"><b>Listo, recibimos tu aviso.</b><br>No tenés que hacer nada más.</div>
+  $().innerHTML=`<div class="msg"><b>Listo, recibimos tu aviso.</b><br>La distribuidora lo va a verificar.</div>
+  <button class="sec" onclick="abrirCuenta()">Volver a Mi cuenta</button>
+  <div style="height:8px"></div>
   <button class="sec" onclick="d.paso='inicio';render()">Volver al inicio</button>
-  <p class="muted">Demo: el aviso ya aparece en <a href="cobranza.html#avisos">Pagos avisados de la distribuidora</a> (mismo navegador).</p>`;
+  <p class="muted">Demo: el aviso ya aparece en <a href="cobranza.html#avisos">Cuenta corriente de la distribuidora</a> (mismo navegador).</p>`;
 }
-function cambiar(){d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:'',av:null};render();}
+function cambiar(){d={paso:'ident',dni:'',noEncontrado:false,clienteId:null,lineas:[],alta:{nombre:'',tel:'',dir:''},error:'',mc:null};render();}
 function fijarCant(productoId,cant){
   d.lineas=d.lineas.filter(x=>x.productoId!==productoId);
   if(cant>0)d.lineas.push({productoId,cant});

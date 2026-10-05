@@ -54,20 +54,66 @@ function clientesTodos(){ return CLIENTES.concat(dbLoad().clientes || []); }
 function clienteDe(id){ return clientesTodos().find(c => c.id === id); }
 function totalItems(c, items){ return items.reduce((s,i) => s + prod(i.productoId)[c.lista] * i.cant, 0); }
 
-/* ---------- Demo 2: almacenamiento ---------- */
-function f2Vacio(){ return {v:1, seeded:false, boletas:[], pagos:[], avisos:[], mensajes:[], fichas:{}}; }
-function f2Load(){ try { const s = JSON.parse(localStorage.getItem(KEY_F2)); if (s && s.v === 1) return s; } catch(e){} return f2Vacio(); }
+/* ---------- Demo 2: almacenamiento ----------
+   v2: cada pago y cada aviso se discrimina por boleta (asign = [{boletaId, monto}]). */
+function f2Vacio(){ return {v:2, seeded:false, boletas:[], pagos:[], avisos:[], mensajes:[], fichas:{}}; }
 function f2Save(s){ try { localStorage.setItem(KEY_F2, JSON.stringify(s)); return true; } catch(e){ return false; } }
+function f2Load(){
+  try { const s = JSON.parse(localStorage.getItem(KEY_F2)); if (s && s.v === 2) return s; } catch(e){}
+  return f2Iniciar(); // primera vez (o versión vieja): arranca con datos de ejemplo
+}
+function f2Iniciar(){
+  const s = f2Vacio();
+  const db = dbLoad(); // las boletas de pedidos ya confirmados en el Demo 1 se conservan
+  let cambio = false;
+  db.pedidos.forEach(p => { if (p.confirmado) {
+    if (!p.id){ p.id = nuevoId('p'); cambio = true; } if (!p.fecha){ p.fecha = hoyISO(); cambio = true; }
+    s.boletas.push({id:'b-' + p.id, pedidoId:p.id, clienteId:p.clienteId, pedidoFecha:p.fecha, fecha:hoyISO(),
+      items:p.items.filter(i => i.estado === 'ok').map(i => ({productoId:i.productoId, cant:i.cant}))});
+  }});
+  if (cambio) { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e){} }
+  f2Sembrar(s);
+  f2Save(s);
+  return s;
+}
+function f2Reiniciar(){ f2Iniciar(); return true; }
 
-// Saldo = boletas entregadas − pagos confirmados. Siempre calculado.
+/* ---------- boletas: estado, pagado y resta (todo calculado) ---------- */
+const diasEntre = (a, b) => Math.round((Date.UTC(...b.split('-').map((x,i)=>i===1?x-1:+x)) - Date.UTC(...a.split('-').map((x,i)=>i===1?x-1:+x))) / 86400000);
+function boletaTotal(b){ const c = clienteDe(b.clienteId); return c ? totalItems(c, b.items) : 0; }
+function boletasDe(s, clienteId){
+  return s.boletas.filter(b => b.clienteId === clienteId).sort((a, b) => a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.id < b.id ? -1 : 1);
+}
+function boletaInfo(s, b){
+  const total = boletaTotal(b);
+  const pagado = s.pagos.reduce((t, p) => t + (p.asign || []).filter(x => x.boletaId === b.id).reduce((u, x) => u + x.monto, 0), 0);
+  const avisado = s.avisos.filter(a => a.estado === 'avisado')
+    .reduce((t, a) => t + (a.asign || []).filter(x => x.boletaId === b.id).reduce((u, x) => u + x.monto, 0), 0);
+  const resta = Math.max(0, total - pagado);
+  const estado = resta <= 0 ? 'Pagada' : avisado > 0 ? 'Pago avisado' : pagado > 0 ? 'Parcial' : 'Pendiente';
+  const vencida = diasEntre(b.fecha, hoyISO()) > 7;
+  return {b, total, pagado, resta, avisado, disponible:Math.max(0, resta - avisado), estado, vencida,
+    etiqueta: vencida ? 'semana pasada, vencida' : 'esta semana'};
+}
+function infosDe(s, clienteId){ return boletasDe(s, clienteId).map(b => boletaInfo(s, b)); }
+// Saldo = boletas generadas − pagos confirmados. Siempre calculado.
 function f2Saldo(s, clienteId){
-  const c = clienteDe(clienteId); if (!c) return 0;
-  const deb = s.boletas.filter(b => b.clienteId === clienteId).reduce((t,b) => t + totalItems(c, b.items), 0);
-  const hab = s.pagos.filter(p => p.clienteId === clienteId).reduce((t,p) => t + p.monto, 0);
+  const deb = s.boletas.filter(b => b.clienteId === clienteId).reduce((t, b) => t + boletaTotal(b), 0);
+  const hab = s.pagos.filter(p => p.clienteId === clienteId).reduce((t, p) => t + p.monto, 0);
   return deb - hab;
 }
+// Un pago parcial se aplica primero a la boleta más antigua. null si el monto no entra.
+function asignarAntigua(infos, monto, usarDisponible){
+  let r = monto; const out = [];
+  for (const i of infos){
+    const cap = usarDisponible ? i.disponible : i.resta;
+    if (cap <= 0 || r <= 0) continue;
+    const m = Math.min(cap, r); out.push({boletaId:i.b.id, monto:m}); r -= m;
+  }
+  return r > 0 ? null : out;
+}
 
-// Demo 1 → Demo 2: una boleta confirmada pasa a ser deuda; si se reabre, deja de serlo.
+// Demo 1 → Demo 2: una boleta confirmada pasa a ser deuda Pendiente; si se reabre, deja de serlo.
 function f2SyncBoleta(ped){
   if (!ped.id) ped.id = nuevoId('p');
   if (!ped.fecha) ped.fecha = hoyISO();
@@ -100,9 +146,9 @@ function comprobanteEjemplo(monto){
 }
 
 function f2Sembrar(s){
-  const V = {}; // visita más reciente de cada cliente
+  const hoy = hoyISO(), V = {}; // V = última visita (entrega) de cada cliente
   CLIENTES.forEach(c => V[c.id] = ultimaFecha(c.diaVisita));
-  // [clienteId, items de la visita anterior (V2), items de la última visita (V1)]
+  // [clienteId, boleta de la semana pasada (V2), boleta de esta semana (V1)]
   const plan = [
     [1, [[1,1],[5,2],[9,1],[4,6],[7,10]], [[1,1],[5,1],[9,2],[10,3],[11,2]]],
     [2, [[2,1],[3,1],[6,6],[8,4]],        [[2,1],[3,2],[6,4],[8,6]]],
@@ -110,47 +156,41 @@ function f2Sembrar(s){
     [4, [[1,1],[2,1],[4,6],[6,3],[8,2]],  null],
     [5, [[2,2],[5,1],[11,3],[6,4]],       [[2,1],[5,2],[11,2],[6,6]]],
   ];
-  const tot = {};
+  const tot = {}, bid = (c, n) => 'ej-b-' + c + '-' + n;
   plan.forEach(([cid, i2, i1]) => {
     const c = CLIENTES.find(x => x.id === cid), v1 = V[cid], v2 = sumarDias(v1, -7);
     [[i2, v2, 2], [i1, v1, 1]].forEach(([its, v, n]) => {
       if (!its) return;
       const items = its.map(([productoId, cant]) => ({productoId, cant}));
-      s.boletas.push({id:'ej-b-' + cid + '-' + n, clienteId:cid, pedidoFecha:sumarDias(v, -1), fecha:v, items});
+      s.boletas.push({id:bid(cid, n), clienteId:cid, pedidoFecha:sumarDias(v, -1), fecha:v, items});
       tot[cid + '-' + n] = totalItems(c, items);
     });
   });
-  const pago = (clienteId, forma, monto, fecha, aNombreDe, tipo) =>
-    s.pagos.push({id:nuevoId('pg'), clienteId, forma, monto, fecha, aNombreDe:aNombreDe || '', tipo:tipo || 'total', origen:'ejemplo'});
-  // Don Pedro: transferencia a nombre de un tercero (la boleta anterior); la última sigue sin pagar
-  pago(1, 'transferencia', tot['1-2'], V[1], 'Marta Gómez, esposa');
-  // La Esquina y Los Pinos: pagan de contado
-  pago(2, 'efectivo', tot['2-2'], sumarDias(V[2], -7)); pago(2, 'efectivo', tot['2-1'], V[2]);
-  pago(5, 'efectivo', tot['5-2'], sumarDias(V[5], -7)); pago(5, 'efectivo', tot['5-1'], V[5]);
-  // Despensa Norte: pago parcial
-  pago(3, 'efectivo', 50000, V[3], '', 'parcial');
-  // Minimercado Sol: sin pagar
-  const ahora = Date.now(), hoy = hoyISO();
-  const aviso = (clienteId, monto, fechaTransf, aNombreDe, comprobante, minAtras) =>
-    s.avisos.push({id:nuevoId('av'), clienteId, monto, fechaTransf, aNombreDe:aNombreDe || '', comprobante:comprobante || null,
-      enviadoAt:new Date(ahora - minAtras*60000).toISOString(), estado:'avisado', origen:'ejemplo'});
-  aviso(1, tot['1-1'], hoy, '', {tipo:'img', nombre:'comprobante-ejemplo.jpg', data:comprobanteEjemplo(tot['1-1'])}, 180);
-  aviso(3, tot['3-2'] - 50000, sumarDias(hoy, -2), '', null, 60);
-  aviso(4, tot['4-2'], sumarDias(hoy, -1), 'Lucas Ríos, hijo', null, 30);
+  const ts = (iso, h) => new Date(iso + 'T' + h + ':00').toISOString();
+  const pago = (clienteId, forma, monto, fecha, asign, extra) =>
+    s.pagos.push(Object.assign({id:nuevoId('pg'), clienteId, forma, monto, fecha, aNombreDe:'', tipo:'total', origen:'entrega', asign}, extra));
+  // Despensa Norte: la boleta de la semana pasada quedó Parcial (pagó una parte en efectivo en la entrega)
+  pago(3, 'efectivo', 50000, V[3], [{boletaId:bid(3,2), monto:50000}], {tipo:'parcial'});
+  // Almacén Los Pinos: todo Pagado. La anterior por transferencia (aviso ya confirmado) y la de esta semana en efectivo en la entrega
+  const avOk = nuevoId('av'), pgOk = nuevoId('pg');
+  s.avisos.push({id:avOk, clienteId:5, monto:tot['5-2'], fechaTransf:V[5], aNombreDe:'Luis Pino, hijo', comprobante:null,
+    enviadoAt:ts(V[5], '09:10'), estado:'confirmado', modo:'boletas', asign:[{boletaId:bid(5,2), monto:tot['5-2']}],
+    resueltoAt:ts(V[5], '11:30'), pagoId:pgOk, origen:'ejemplo'});
+  s.pagos.push({id:pgOk, clienteId:5, forma:'transferencia', monto:tot['5-2'], fecha:V[5], aNombreDe:'Luis Pino, hijo', tipo:'total',
+    origen:'aviso', avisoId:avOk, asign:[{boletaId:bid(5,2), monto:tot['5-2']}]});
+  pago(5, 'efectivo', tot['5-1'], V[5], [{boletaId:bid(5,1), monto:tot['5-1']}]);
+  // Avisos pendientes (el cliente ya avisó, falta que Walter confirme)
+  const ahora = Date.now();
+  const aviso = (clienteId, modo, asign, fechaTransf, aNombreDe, comprobante, minAtras) =>
+    s.avisos.push({id:nuevoId('av'), clienteId, modo, asign, monto:asign.reduce((t, x) => t + x.monto, 0), fechaTransf,
+      aNombreDe:aNombreDe || '', comprobante:comprobante || null, enviadoAt:new Date(ahora - minAtras*60000).toISOString(), estado:'avisado', origen:'ejemplo'});
+  // La Esquina: paga la boleta de la semana pasada, con comprobante de ejemplo
+  aviso(2, 'boletas', [{boletaId:bid(2,2), monto:tot['2-2']}], hoy, '', {tipo:'img', nombre:'comprobante-ejemplo.jpg', data:comprobanteEjemplo(tot['2-2'])}, 180);
+  // La Esquina: además un pago parcial, sin comprobante (cae en la boleta más antigua que todavía no está avisada)
+  aviso(2, 'parcial', [{boletaId:bid(2,1), monto:5000}], sumarDias(hoy, -2), '', null, 60);
+  // Don Pedro: una persona de la familia paga las dos boletas
+  aviso(1, 'boletas', [{boletaId:bid(1,2), monto:tot['1-2']}, {boletaId:bid(1,1), monto:tot['1-1']}], sumarDias(hoy, -1), 'Marta Gómez, esposa', null, 30);
   s.seeded = true;
-}
-
-function f2Reiniciar(){
-  const s = f2Vacio();
-  const db = dbLoad(); // las boletas de pedidos ya confirmados en el Demo 1 se conservan
-  db.pedidos.forEach(p => { if (p.confirmado) {
-    if (!p.id) p.id = nuevoId('p'); if (!p.fecha) p.fecha = hoyISO();
-    s.boletas.push({id:'b-' + p.id, pedidoId:p.id, clienteId:p.clienteId, pedidoFecha:p.fecha, fecha:hoyISO(),
-      items:p.items.filter(i => i.estado === 'ok').map(i => ({productoId:i.productoId, cant:i.cant}))});
-  }});
-  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e){}
-  f2Sembrar(s);
-  return f2Save(s);
 }
 
 // Deja el demo en blanco: sin pedidos, clientes nuevos, boletas, pagos, avisos ni mensajes.
