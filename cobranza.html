@@ -30,7 +30,8 @@
   .row{display:flex;gap:8px;align-items:center}
   .row>*{flex:1}
   .gap{height:8px}
-  .tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 8px;border-radius:99px;color:#fff;vertical-align:middle;background:#888}
+  .tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 8px;border-radius:99px;color:#fff;vertical-align:middle;background:#888;white-space:nowrap;flex:0 0 auto;align-self:center}
+  .mon{white-space:nowrap}
   .tag.par{background:#2b7bb9} .tag.av{background:var(--warn)} .tag.ok{background:var(--ok)} .tag.no{background:#888} .tag.new{background:var(--new)} .tag.bad{background:var(--bad)}
   .muted{color:var(--muted);font-size:15px}
   .line{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
@@ -81,7 +82,8 @@
 
 <script src="datos.js"></script>
 <script>
-const TABS = [['cuentas','💳','Cuenta corriente'],['ficha','🗂️','Ficha de cliente'],['seguir','🔎','Seguimiento'],['mensajes','💬','Mensajes']];
+// Tanda 3: la pestaña Mensajes (['mensajes','💬','Mensajes']) está construida pero oculta; se vuelve a sumar acá.
+const TABS = [['cuentas','💳','Cuenta corriente'],['ficha','🗂️','Ficha de cliente'],['seguir','🔎','Seguimiento']];
 const hash = location.hash.replace('#','');
 let st = {
   tab: TABS.some(t => t[0] === hash) ? hash : 'cuentas',
@@ -328,8 +330,12 @@ function rFicha(){
   const pag = S.pagos.filter(p => p.clienteId === c.id).sort((a, b) => b.fecha < a.fecha ? -1 : 1);
   // pagadores habituales
   const pagadores = {};
-  pag.forEach(p => { const n = (p.aNombreDe || '').trim(); if (n) pagadores[n] = (pagadores[n] || 0) + 1; });
-  const listaPag = Object.entries(pagadores).sort((a, b) => b[1] - a[1]);
+  pag.forEach(p => {
+    const n = (p.aNombreDe || '').trim().replace(/\s+/g, ' '), k = n.toLowerCase();
+    if (n) pagadores[k] = {nombre: (pagadores[k] || {}).nombre || n, n: ((pagadores[k] || {}).n || 0) + 1};
+  });
+  const listaPag = Object.values(pagadores).sort((a, b) => b.n - a.n).map(x => [x.nombre, x.n]);
+  const avPend = pendientes().filter(a => a.clienteId === c.id);
   // productos habituales (en cuántos pedidos aparece cada uno)
   const cuenta = {};
   ordenes(c).forEach(o => o.items.forEach(i => { const k = cuenta[i.productoId] = cuenta[i.productoId] || {n:0, q:0}; k.n++; k.q += i.cant; }));
@@ -346,7 +352,9 @@ function rFicha(){
     <div class="line"><span>¿Ve el monto?</span><b>${c.ve_monto ? 'Sí' : 'No'}</b></div></div>
   <div class="card"><h2 style="margin-top:0">Pagos y saldo</h2>
     <div class="line"><span>Saldo</span><b class="${saldo > 0 ? 'saldo deuda' : ''}">${fmt(saldo)}</b></div>
-    ${pag.slice(0, 5).map(p => `<div class="line"><span>${fmtFecha(p.fecha)} · ${p.forma === 'efectivo' ? 'Efectivo' : 'Transf.'}${p.tipo === 'parcial' ? ' (parcial)' : ''}</span><span>${fmt(p.monto)}</span></div>`).join('') || '<span class="muted">Sin pagos.</span>'}
+    ${avPend.length ? `<div class="line"><span>Avisado, sin confirmar <span class="muted">(no descuenta)</span></span><span class="tag av">${avPend.length}</span></div>` : ''}
+    <div class="muted" style="margin-top:6px">Pagos confirmados</div>
+    ${pag.slice(0, 5).map(p => `<div class="line"><span>${fmtFecha(p.fecha)} · ${p.forma === 'efectivo' ? 'Efectivo' : 'Transferencia'}${p.tipo === 'parcial' ? ' (parcial)' : ''}${p.aNombreDe ? `<br><span class="muted">a nombre de ${esc(p.aNombreDe)}</span>` : ''}</span><span class="mon">${fmt(p.monto)}</span></div>`).join('') || '<span class="muted">Sin pagos confirmados.</span>'}
     <div class="gap"></div><button class="sec" onclick="verCuenta(${c.id})">Ver cuenta corriente</button></div>
   <div class="card"><h2 style="margin-top:0">Pagadores habituales</h2>
     ${listaPag.length ? listaPag.map(([n, k]) => `<div class="line"><span>${esc(n)}</span><span class="muted">${k} pago(s)</span></div>`).join('') : '<span class="muted">Todavía no hay pagos a nombre de otra persona.</span>'}</div>
@@ -375,7 +383,7 @@ function motivoSeguimiento(c){
   if (!o.some(x => x.fecha > prev)) return {tipo:'nopidio', texto:`No pidió para su visita del ${DIAS[c.diaVisita]} ${fmtFecha(ult)}`};
   if (o.length >= 2){
     const a = o[o.length - 1], b = o[o.length - 2];
-    if (a.items.length < b.items.length) return {tipo:'menos', texto:`Pidió menos: ${a.items.length} productos (antes ${b.items.length})`};
+    if (a.items.length < b.items.length) return {tipo:'menos', texto:`Pidió menos: ${a.items.length} ${a.items.length === 1 ? 'producto' : 'productos'} (antes ${b.items.length})`};
   }
   return null;
 }
@@ -386,7 +394,7 @@ function rSeguir(){
   <p class="muted">No pidió: no hizo pedido desde su visita anterior y ya pasó su último día de visita. Pidió menos: el último pedido tiene menos productos que el anterior.</p>
   ${lista.length ? lista.map(x => `<div class="card"><div class="line" style="border:0;padding:0"><span><b>${esc(x.c.nombre)}</b><br><span class="muted">${esc(x.m.texto)}</span></span>
     <span class="tag ${x.m.tipo === 'nopidio' ? 'bad' : 'av'}">${x.m.tipo === 'nopidio' ? 'No pidió' : 'Pidió menos'}</span></div>
-    <div class="gap"></div><button onclick="armarMensaje(${x.c.id},'seg')">Armar mensaje</button></div>`).join('') : '<div class="card muted">No hay clientes para contactar.</div>'}`;
+    <div class="gap"></div><button disabled>Armar mensaje</button><p class="muted" style="margin:4px 0 0;text-align:center">Disponible en la próxima etapa</p></div>`).join('') : '<div class="card muted">No hay clientes para contactar.</div>'}`;
 }
 function armarMensaje(cid, tipo){ st.m = {tipo, cid, texto:plantilla(tipo, clienteDe(cid))}; go('mensajes'); }
 

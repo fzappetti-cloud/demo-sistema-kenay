@@ -111,15 +111,15 @@ Explicar en 5 líneas cómo abrir el demo y cómo recorrer el flujo completo.
 # Fase 2: Cobranza y CRM con mensajes (Demo 2)
 
 Se construye **sobre** el Demo 1, reutilizando sus clientes, productos, pedidos y estilo, en 3 tandas:
-1. **Cuenta corriente y Mi cuenta del cliente** (pago por boleta). ← *Tanda 1, descripta abajo.*
-2. Ficha de cliente y Seguimiento.
-3. Mensajes.
+1. **Cuenta corriente y Mi cuenta del cliente** (pago por boleta). ✔ *Tanda 1.*
+2. **Ficha de cliente y Seguimiento.** ✔ *Tanda 2.*
+3. Mensajes. *(pendiente)*
 
-Las pestañas Ficha, Seguimiento y Mensajes ya existen en una primera versión (anterior a esta tanda). Siguen funcionando y se rehacen en las tandas 2 y 3; en la tanda 1 solo se las mantuvo compatibles con el nuevo modelo de pagos.
+La pestaña Mensajes (tanda 3) tiene una primera versión ya construida pero **oculta** de la barra; se vuelve a sumar y se rehace en la tanda 3.
 
 ## Archivos
 - `datos.js`: clientes, productos, íconos y utilidades **compartidos** por las tres páginas (no hay datos duplicados) + modelo de la Fase 2 (boletas, pagos, avisos) y datos de ejemplo.
-- `cobranza.html`: lado distribuidora. Acceso desde la barra de arriba de las otras páginas ("💰 Cobranza y clientes"). Pestañas: **Cuenta corriente** (tanda 1) y, preparadas para rehacerse, Ficha de cliente, Seguimiento y Mensajes.
+- `cobranza.html`: lado distribuidora. Acceso desde la barra de arriba de las otras páginas ("💰 Cobranza y clientes"). Pestañas: **Cuenta corriente** (tanda 1), **Ficha de cliente** y **Seguimiento** (tanda 2). Mensajes llega en la tanda 3.
 - `pedido.html`: lado cliente. Tras validar el negocio hay una pantalla de inicio con dos botones: **Hacer pedido** y **Mi cuenta**.
 - `localStorage`: `demo-kenay-v1` (Demo 1: pedidos del día y clientes nuevos, igual que antes) y `demo-kenay-f2` (Fase 2, versión 2). Si el navegador tenía datos de la versión anterior de la Fase 2, se reemplazan por los datos de ejemplo la primera vez.
 
@@ -210,4 +210,55 @@ Las pestañas Ficha, Seguimiento y Mensajes ya existen en una primera versión (
 Sin servidor, lo que hace el cliente **solo llega a la distribuidora si ambas páginas se abren en el mismo navegador y dispositivo** (comparten `localStorage`). La versión real necesita un servidor con base de datos y almacenamiento de imágenes.
 
 ## Fuera de alcance de la tanda 1
-Rehacer Ficha de cliente, Seguimiento y Mensajes (tandas 2 y 3), botones "Avisar al cliente", stock y compras, envío real de WhatsApp, notificaciones, lectura automática del comprobante, integración con bancos, rutas, facturación fiscal, usuarios y contraseñas, inteligencia artificial.
+Mensajes (tanda 3), botones "Avisar al cliente", stock y compras, envío real de WhatsApp, notificaciones, lectura automática del comprobante, integración con bancos, rutas, facturación fiscal, usuarios y contraseñas, inteligencia artificial.
+
+---
+
+# Fase 2, tanda 2: Ficha de cliente y Seguimiento
+
+Dos pestañas nuevas en `cobranza.html`, junto a Cuenta corriente (que no se tocó). Todo se calcula desde los datos de la tanda 1 (boletas, pagos, avisos); no hay datos nuevos duplicados.
+
+## Ficha de cliente
+Se elige el cliente en un desplegable (incluye los clientes nuevos dados de alta desde `pedido.html`). Muestra:
+- **Datos:** negocio, teléfono, dirección de entrega.
+- **Día de visita** semanal, **lista de precios** (A o B) y **`ve_monto`**.
+- **Pagos y saldo:** el saldo (siempre igual al de Cuenta corriente), los avisos sin confirmar (que no descuentan) y los últimos pagos confirmados, con forma y "a nombre de". Botón para ir a la cuenta corriente del cliente.
+- **Pagadores habituales:** nombres de "a nombre de" en sus **pagos confirmados**, con cuántas veces aparece cada uno. Se agrupan sin importar mayúsculas ni espacios de más ("tío raúl" y "Tío Raúl" cuentan como uno). Un aviso sin confirmar no suma.
+- **Productos habituales:** los 4 que aparecen en más pedidos del historial ("en 2 de 2 pedidos"); si hay empate, el de más cantidad total.
+- **Historial de pedidos:** fecha y cantidad de ítems (productos distintos) de cada pedido, incluido el pedido pendiente que haya en el Demo 1.
+- **Observaciones:** texto libre con botón "Guardar observaciones". Se conserva al cambiar de pestaña y al recargar. Aviso: si escribís "pausa" o "pausó", el cliente no aparece en Seguimiento.
+
+## Seguimiento
+Lista de clientes a contactar, calculada sola, con **dos reglas**:
+- **No pidió:** el cliente no tiene ningún pedido desde su visita anterior y ya pasó su último día de visita. (El mismo día de visita todavía no cuenta: se evalúa contra la visita de la semana pasada.)
+- **Pidió menos:** el último pedido tiene menos **productos distintos** (ítems) que el anterior.
+
+Cada fila muestra cliente, motivo y etiqueta. El botón **"Armar mensaje" aparece deshabilitado** con el texto "Disponible en la próxima etapa" (se activa en la tanda 3). Aviso visible: **"Criterios de demo. Los criterios reales se definen con datos reales."**
+
+## Decisiones tomadas
+- Las reglas usan la fecha de hoy y la visita **más reciente ya pasada**, no la semana calendario. Así Seguimiento da resultados cualquier día (se probó con cada día de la semana simulado) y los datos de ejemplo siempre incluyen un cliente que no pidió (Minimercado Sol) y uno que pidió menos (Despensa Norte: 3 productos contra 6).
+- Un cliente sin día de visita (por ejemplo, uno dado de alta nuevo) no aparece en "No pidió", y uno que nunca hizo un pedido no aparece en Seguimiento (no "dejó de pedir" quien nunca pidió).
+- Un pedido recién cargado cuenta como el último pedido: si es más chico que el anterior, el cliente pasa de "No pidió" a "Pidió menos".
+- "Cantidad total de ítems" se interpreta como cantidad de productos distintos del pedido (no la suma de unidades, que mezclaría bultos con unidades).
+- La pausa se detecta por el texto de la observación; no hay un campo aparte.
+- La pestaña Mensajes se ocultó de la barra hasta la tanda 3.
+
+## Criterios de aceptación de la tanda 2
+1. Hay dos pestañas nuevas, Ficha de cliente y Seguimiento; Cuenta corriente sigue igual.
+2. La ficha muestra datos, día de visita, lista, `ve_monto`, historial de pedidos, pagos y saldo (coincide con Cuenta corriente).
+3. La ficha muestra productos habituales calculados del historial.
+4. La ficha muestra pagadores habituales calculados de los pagos confirmados.
+5. Observaciones se edita y se guarda.
+6. Seguimiento lista al cliente que no pidió (y ya pasó su día de visita), con su motivo.
+7. Seguimiento lista al que pidió menos, con su motivo.
+8. Un cliente con observación de pausa no aparece.
+9. Se ve "Criterios de demo. Los criterios reales se definen con datos reales."
+10. "Armar mensaje" está deshabilitado.
+11. Todo lo de la tanda 1 y el Demo 1 sigue funcionando.
+12. Todo se usa bien en celular.
+
+## Limitación conocida (no resolver en el demo)
+Sin servidor, lo que hace el cliente solo llega a la distribuidora si ambas páginas se abren en el mismo navegador y dispositivo. La versión real necesita un servidor con base de datos y almacenamiento de imágenes.
+
+## Fuera de alcance de la tanda 2
+Mensajes y plantillas (tanda 3), botones "Avisar al cliente", stock y compras, envío real de WhatsApp, notificaciones, rutas, facturación fiscal, usuarios y contraseñas, inteligencia artificial.
