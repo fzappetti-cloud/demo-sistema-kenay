@@ -13,7 +13,15 @@ Demo navegable para mostrar a Walter e Ivanna (Distribuidora Kenay) cómo se tra
 ## Problema que resuelve
 Hoy Walter lee WhatsApp y escribe a mano una boleta inicial (23:00 a 04:00, y otra vez a las 4:00 con pedidos tardíos). Después embalan marcando en una segunda boleta en papel, y esa es la que se entrega. El mismo dato se escribe dos veces.
 
-## Pantallas (4)
+## Pantallas (4 del lado de la distribuidora + 1 del lado del cliente)
+
+### 0. Página del cliente (`pedido.html`)
+- Página aparte donde **el cliente de Walter carga su propio pedido**: elige su negocio (los 5 clientes ficticios, sin login), agrega productos y cantidades (misma forma de venta: `unidad` / `bulto`) y toca "Enviar pedido".
+- No muestra precios.
+- El pedido queda **impactado** en la "Lista del día" de Walter con la etiqueta "Del cliente", sin que Walter lo cargue de nuevo. Desde ahí sigue el flujo normal: embalaje → boleta.
+- Si el cliente ya tenía pedido ese día, lo que envía se suma al mismo.
+- Limitación del demo: sin backend, el pedido solo llega a Walter si ambas páginas se abren **en el mismo navegador/dispositivo** (comparten `localStorage`). En el sistema real hace falta un servidor.
+- La pantalla "1. Cargar pedido" de Walter sigue existiendo para pedidos que llegan por WhatsApp.
 
 ### 1. Cargar pedido
 - Elegir cliente (lista fija de 5 clientes ficticios).
@@ -81,6 +89,7 @@ Precio del bulto = precio por bulto completo; medio bulto = la mitad.
 5. La boleta de un cliente con `ve_monto = no` no muestra ningún precio.
 6. La boleta no incluye los faltantes.
 7. Funciona bien en pantalla de celular.
+8. Un pedido enviado desde `pedido.html` aparece en la lista del día de Walter sin recargarlo a mano.
 
 ## Fuera de alcance (no construir)
 Cobranza, stock, compras, rutas, recordatorios, seguimiento de clientes, WhatsApp automático, facturación fiscal, usuarios y contraseñas.
