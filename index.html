@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEMO Kenay – Pedido, embalaje y boleta</title>
+<style>
+  :root{
+    --bg:#f4f1ea; --card:#fff; --ink:#1f2933; --muted:#6b7280; --line:#d9d4c7;
+    --brand:#1d5fa8; --ok:#1e8e4e; --warn:#c77700; --bad:#c0392b; --new:#7b2cbf;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:84px}
+  .demo-bar{background:#222;color:#ffd84d;text-align:center;font-weight:700;padding:6px 8px;font-size:14px;letter-spacing:.5px}
+  main{max-width:640px;margin:0 auto;padding:12px}
+  h1{font-size:22px;margin:8px 0 12px}
+  h2{font-size:19px;margin:16px 0 8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+  label{display:block;font-weight:600;margin:10px 0 4px}
+  select,input[type=number]{width:100%;font-size:18px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:14px 16px;min-height:52px;background:var(--brand);color:#fff;width:100%;cursor:pointer}
+  button.sec{background:#e8e4d8;color:var(--ink)}
+  button.ok{background:var(--ok)}
+  button.bad{background:var(--bad)}
+  button:disabled{background:#c9c9c9;color:#777;cursor:not-allowed}
+  .row{display:flex;gap:8px;align-items:center}
+  .row>*{flex:1}
+  .row>.fit{flex:0 0 auto;width:auto}
+  .tag{display:inline-block;font-size:13px;font-weight:800;padding:3px 8px;border-radius:99px;color:#fff;vertical-align:middle}
+  .tag.new{background:var(--new)} .tag.s0{background:#888} .tag.s1{background:var(--warn)} .tag.s2{background:var(--ok)}
+  .tag.ej{background:#e8e4d8;color:#555}
+  .muted{color:var(--muted);font-size:15px}
+  .check{display:flex;gap:10px;align-items:center;font-weight:600;margin:12px 0}
+  .check input{width:28px;height:28px}
+  .line{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .line:last-child{border-bottom:0}
+  .client{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);margin-bottom:8px}
+  .item{border:2px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px;background:#fff}
+  .item.ok{border-color:var(--ok);background:#e9f7ef}
+  .item.falt{border-color:var(--bad);background:#fdecea}
+  .item .name{font-weight:700}
+  .item .btns{display:flex;gap:8px;margin-top:8px}
+  .item .btns button{min-height:48px}
+  .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#222;padding:6px;gap:6px;z-index:5}
+  .tabs button{background:#444;font-size:15px;padding:10px 4px;min-height:48px}
+  .tabs button.on{background:var(--brand)}
+  .total{font-size:22px;font-weight:800;text-align:right;margin-top:8px}
+  .walter{border:2px dashed var(--warn);background:#fff8e6}
+  .boleta{background:#fff;border:1px solid #999;padding:14px;border-radius:6px}
+  .boleta h2{margin-top:0}
+  .hidden{display:none!important}
+  .right{text-align:right}
+  @media print{
+    body{background:#fff;padding:0}
+    .demo-bar{background:#fff;color:#000;border-bottom:1px solid #000}
+    .tabs,.no-print,h1{display:none!important}
+    .boleta{border:0}
+  }
+</style>
+</head>
+<body>
+<div class="demo-bar">DEMO – datos ficticios – no es el sistema final</div>
+<main id="app"></main>
+<nav class="tabs no-print">
+  <button id="t-cargar" onclick="go('cargar')">1. Cargar</button>
+  <button id="t-lista" onclick="go('lista')">2. Lista del día</button>
+</nav>
+
+<script>
+const CLIENTES = [
+  {id:1, nombre:'Almacén Don Pedro', lista:'A', ve_monto:false},
+  {id:2, nombre:'Kiosco La Esquina', lista:'B', ve_monto:true},
+  {id:3, nombre:'Despensa Norte', lista:'A', ve_monto:false},
+  {id:4, nombre:'Minimercado Sol', lista:'B', ve_monto:false},
+  {id:5, nombre:'Almacén Los Pinos', lista:'A', ve_monto:true},
+];
+const PRODUCTOS = [
+  {id:1, nombre:'Papel higiénico (pack)', forma:'bulto', A:18000, B:19500},
+  {id:2, nombre:'Rollos de cocina', forma:'bulto', A:9000, B:9800},
+  {id:3, nombre:'Harina común 1 kg', forma:'bulto', A:12000, B:13000},
+  {id:4, nombre:'Harina leudante 1 kg', forma:'unidad', A:1500, B:1650},
+  {id:5, nombre:'Arroz 1 kg', forma:'bulto', A:14000, B:15200},
+  {id:6, nombre:'Cereales', forma:'unidad', A:2200, B:2400},
+  {id:7, nombre:'Galletitas', forma:'unidad', A:900, B:1000},
+  {id:8, nombre:'Dulce de leche', forma:'unidad', A:2800, B:3000},
+  {id:9, nombre:'Fideos 500 g', forma:'bulto', A:10500, B:11300},
+  {id:10, nombre:'Aceite 900 ml', forma:'unidad', A:3000, B:3300},
+  {id:11, nombre:'Yerba 1 kg', forma:'unidad', A:4200, B:4600},
+  {id:12, nombre:'Gaseosa 1,5 L', forma:'bulto', A:16000, B:17200},
+];
+const KEY = 'demo-kenay-v1';
+const $app = document.getElementById('app');
+const fmt = n => '$ ' + Math.round(n).toLocaleString('es-AR');
+const cli = id => CLIENTES.find(c => c.id === id);
+const prod = id => PRODUCTOS.find(p => p.id === id);
+
+function load(){
+  try { return JSON.parse(localStorage.getItem(KEY)) || {pedidos:[]}; }
+  catch(e){ return {pedidos:[]}; }
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e){} }
+let db = load();
+
+// estado de pantalla (borrador del pedido; no se guarda hasta confirmar)
+let view = 'cargar', clienteSel = null;
+let draft = {clienteId:'', tardio:false, lineas:[], resumen:false};
+
+function cantLabel(p, q){
+  if (p.forma === 'unidad') return q + (q === 1 ? ' unidad' : ' unidades');
+  if (q === 0.5) return 'medio bulto';
+  return (q === 1 ? '1 bulto' : q + ' bultos');
+}
+function precioUnit(c, p){ return p[c.lista]; }
+function subtotal(c, it){ const p = prod(it.productoId); return precioUnit(c,p) * it.cant; }
+function estadoPedido(ped){
+  if (ped.confirmado) return 2;
+  return ped.items.some(i => i.estado !== 'pend') ? 1 : 0;
+}
+const ESTADOS = ['Sin empezar','Embalando','Embalado'];
+
+function go(v, id){
+  view = v; if (id !== undefined) clienteSel = id;
+  render(); window.scrollTo(0,0);
+}
+
+/* ---------- 1. Cargar pedido ---------- */
+function opcionesCant(p){
+  const vals = p.forma === 'bulto'
+    ? [1,0.5,2,3,4,5,6,8,10]
+    : [1,2,3,4,5,6,8,10,12,24];
+  return vals.map(v => `<option value="${v}">${cantLabel(p, v)}</option>`).join('');
+}
+function renderCargar(){
+  if (draft.resumen) return renderResumen();
+  const c = cli(+draft.clienteId);
+  let h = `<h1>1. Cargar pedido</h1>
+  <div class="card">
+    <label for="cli">Cliente</label>
+    <select id="cli" onchange="draft.clienteId=this.value;render()">
+      <option value="">— Elegir cliente —</option>
+      ${CLIENTES.map(x=>`<option value="${x.id}" ${+draft.clienteId===x.id?'selected':''}>${x.nombre}</option>`).join('')}
+    </select>
+    <label class="check"><input type="checkbox" ${draft.tardio?'checked':''} onchange="draft.tardio=this.checked;render()"> Pedido tardío (madrugada)</label>
+  </div>`;
+  if (c){
+    h += `<div class="card">
+      <label for="prod">Producto <span class="tag ej">ejemplo</span></label>
+      <select id="prod" onchange="document.getElementById('cant').innerHTML=opcionesCant(prod(+this.value))">
+        ${PRODUCTOS.map(p=>`<option value="${p.id}">${p.nombre} (${p.forma})</option>`).join('')}
+      </select>
+      <label for="cant">Cantidad</label>
+      <select id="cant">${opcionesCant(PRODUCTOS[0])}</select>
+      <div style="height:10px"></div>
+      <button onclick="agregarLinea()">+ Agregar al pedido</button>
+    </div>`;
+  }
+  if (draft.lineas.length){
+    h += `<h2>Pedido en armado</h2><div class="card">` +
+      draft.lineas.map((l,i)=>{
+        const p = prod(l.productoId);
+        return `<div class="line"><span>${p.nombre}<br><span class="muted">${cantLabel(p,l.cant)}</span></span>
+        <button class="bad fit" style="min-height:40px;padding:6px 12px" onclick="quitarLinea(${i})">Quitar</button></div>`;
+      }).join('') + `</div>
+      <button class="ok" onclick="draft.resumen=true;render()">Ver resumen</button>`;
+  }
+  $app.innerHTML = h;
+}
+function agregarLinea(){
+  const productoId = +document.getElementById('prod').value;
+  const cant = +document.getElementById('cant').value;
+  const ex = draft.lineas.find(l => l.productoId === productoId);
+  if (ex) ex.cant += cant; else draft.lineas.push({productoId, cant});
+  render();
+}
+function quitarLinea(i){ draft.lineas.splice(i,1); render(); }
+
+function renderResumen(){
+  const c = cli(+draft.clienteId);
+  let total = 0;
+  const rows = draft.lineas.map(l=>{
+    const p = prod(l.productoId), s = precioUnit(c,p)*l.cant; total += s;
+    return `<div class="line"><span>${p.nombre}<br><span class="muted">${cantLabel(p,l.cant)} × ${fmt(precioUnit(c,p))}</span></span><b>${fmt(s)}</b></div>`;
+  }).join('');
+  $app.innerHTML = `<h1>Resumen del pedido</h1>
+  <div class="card"><b>${c.nombre}</b> ${draft.tardio?'<span class="tag new">NUEVO</span>':''}
+    <div class="muted">Lista ${c.lista} · ${c.ve_monto?'ve el monto':'no ve el monto'}</div></div>
+  <div class="card">${rows}<div class="total">Total: ${fmt(total)}</div></div>
+  <button class="ok" onclick="guardarPedido()">Confirmar y guardar</button>
+  <div style="height:8px"></div>
+  <button class="sec" onclick="draft.resumen=false;render()">Volver a editar</button>`;
+}
+function guardarPedido(){
+  const cid = +draft.clienteId;
+  let ped = db.pedidos.find(p => p.clienteId === cid);
+  if (!ped){ ped = {clienteId:cid, items:[], tardio:false, confirmado:false}; db.pedidos.push(ped); }
+  draft.lineas.forEach(l=>{
+    const ex = ped.items.find(i => i.productoId === l.productoId && i.estado === 'pend');
+    if (ex) ex.cant += l.cant;
+    else ped.items.push({productoId:l.productoId, cant:l.cant, estado:'pend'});
+  });
+  if (draft.tardio) ped.tardio = true;
+  ped.confirmado = false; // si llegó algo más, hay que volver a controlar
+  save();
+  draft = {clienteId:'', tardio:false, lineas:[], resumen:false};
+  go('lista');
+}
+
+/* ---------- 2. Lista del día ---------- */
+function renderLista(){
+  let h = `<h1>2. Lista del día</h1>`;
+  if (!db.pedidos.length) h += `<div class="card muted">Todavía no hay pedidos cargados.</div>`;
+  db.pedidos.forEach(ped=>{
+    const c = cli(ped.clienteId), e = estadoPedido(ped);
+    h += `<button class="client" onclick="go('embalaje',${c.id})">
+      <span><b>${c.nombre}</b> ${ped.tardio?'<span class="tag new">NUEVO</span>':''}<br>
+      <span class="muted">${ped.items.length} ítem(s)</span></span>
+      <span class="tag s${e}">${ESTADOS[e]}</span></button>`;
+  });
+  h += `<div style="height:16px"></div>
+  <button class="sec no-print" onclick="resetDemo()">Borrar datos del demo</button>`;
+  $app.innerHTML = h;
+}
+function resetDemo(){
+  if (!confirm('¿Borrar todos los pedidos del demo?')) return;
+  db = {pedidos:[]}; save(); render();
+}
+
+/* ---------- 3. Embalaje y control ---------- */
+function renderEmbalaje(){
+  const ped = db.pedidos.find(p => p.clienteId === clienteSel);
+  if (!ped) return go('lista');
+  const c = cli(ped.clienteId);
+  const pend = ped.items.filter(i => i.estado === 'pend').length;
+  let h = `<button class="sec no-print" onclick="go('lista')">← Lista del día</button>
+  <h1>3. Embalaje: ${c.nombre} ${ped.tardio?'<span class="tag new">NUEVO</span>':''}</h1>`;
+  ped.items.forEach((it,i)=>{
+    const p = prod(it.productoId);
+    h += `<div class="item ${it.estado==='ok'?'ok':it.estado==='falt'?'falt':''}">
+      <div class="name">${p.nombre}</div>
+      <div>${cantLabel(p,it.cant)} ${it.estado==='falt'?'<b style="color:var(--bad)">· FALTANTE</b>':''}</div>
+      <div class="btns">
+        <button class="${it.estado==='ok'?'ok':'sec'}" onclick="marcar(${i},'ok')">${it.estado==='ok'?'✔ Embalado':'☐ Embalado'}</button>
+        <button class="${it.estado==='falt'?'bad':'sec'}" onclick="marcar(${i},'falt')">${it.estado==='falt'?'✖ Faltante':'Faltante'}</button>
+      </div></div>`;
+  });
+  h += `<div style="height:8px"></div>
+    <button class="ok" ${pend?'disabled':''} onclick="confirmarCliente()">Confirmar cliente</button>
+    ${pend?`<p class="muted">Faltan resolver ${pend} ítem(s): tildalos o marcalos como faltante.</p>`:''}
+    ${ped.confirmado?`<div style="height:8px"></div><button class="sec" onclick="go('boleta',${c.id})">Ver boleta</button>`:''}`;
+  $app.innerHTML = h;
+}
+function marcar(i, est){
+  const ped = db.pedidos.find(p => p.clienteId === clienteSel);
+  const it = ped.items[i];
+  it.estado = it.estado === est ? 'pend' : est; // tocar de nuevo destilda
+  ped.confirmado = false;
+  save(); render();
+}
+function confirmarCliente(){
+  const ped = db.pedidos.find(p => p.clienteId === clienteSel);
+  if (ped.items.some(i => i.estado === 'pend')) return;
+  ped.confirmado = true; save();
+  go('boleta', clienteSel);
+}
+
+/* ---------- 4. Boleta final ---------- */
+function renderBoleta(){
+  const ped = db.pedidos.find(p => p.clienteId === clienteSel);
+  if (!ped || !ped.confirmado) return go('lista');
+  const c = cli(ped.clienteId);
+  const embalados = ped.items.filter(i => i.estado === 'ok');
+  const total = embalados.reduce((s,i)=>s+subtotal(c,i),0);
+  const hoy = new Date().toLocaleDateString('es-AR');
+  const filas = embalados.map(it=>{
+    const p = prod(it.productoId);
+    return c.ve_monto
+      ? `<div class="line"><span>${p.nombre}<br><span class="muted">${cantLabel(p,it.cant)} × ${fmt(precioUnit(c,p))}</span></span><b>${fmt(subtotal(c,it))}</b></div>`
+      : `<div class="line"><span>${p.nombre}</span><b>${cantLabel(p,it.cant)}</b></div>`;
+  }).join('') || '<div class="muted">No se embaló ningún ítem.</div>';
+  $app.innerHTML = `<button class="sec no-print" onclick="go('embalaje',${c.id})">← Volver al embalaje</button>
+  <h1>4. Boleta final</h1>
+  <div class="card walter no-print"><b>Solo para Walter:</b> total embalado <b>${fmt(total)}</b>
+    <div class="muted">${c.ve_monto?'El cliente ve precios en su boleta.':'El cliente NO ve precios en su boleta.'}</div></div>
+  <div class="boleta">
+    <h2>Distribuidora Kenay <span class="muted">(DEMO)</span></h2>
+    <div><b>${c.nombre}</b></div><div class="muted">Fecha: ${hoy} · BOLETA DEMO – sin valor fiscal</div>
+    <div style="height:8px"></div>
+    ${filas}
+    ${c.ve_monto?`<div class="total">Total: ${fmt(total)}</div>`:''}
+  </div>
+  <div style="height:10px"></div>
+  <button class="no-print" onclick="window.print()">Imprimir / guardar PDF</button>`;
+}
+
+function render(){
+  document.getElementById('t-cargar').classList.toggle('on', view==='cargar');
+  document.getElementById('t-lista').classList.toggle('on', view!=='cargar');
+  ({cargar:renderCargar, lista:renderLista, embalaje:renderEmbalaje, boleta:renderBoleta})[view]();
+}
+render();
+</script>
+</body>
+</html>
