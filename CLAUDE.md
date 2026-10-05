@@ -16,16 +16,23 @@ Hoy Walter lee WhatsApp y escribe a mano una boleta inicial (23:00 a 04:00, y ot
 ## Pantallas (4 del lado de la distribuidora + 1 del lado del cliente)
 
 ### 0. Página del cliente (`pedido.html`)
-- Página aparte donde **el cliente de Walter carga su propio pedido**: **valida su negocio con el DNI del titular** (dato ficticio que ya está asociado a cada uno de los 5 clientes; sin login ni contraseña). Si el DNI no está cargado, la página ofrece la **carga inicial del negocio** (nombre, DNI, teléfono, dirección de entrega): queda guardado como cliente nuevo (lista A, no ve monto, por defecto) y a Walter le aparece con la etiqueta "Cliente nuevo" para validarlo. Después agrega productos y cantidades (misma forma de venta: `unidad` / `bulto`) y toca "Enviar pedido".
+- Página aparte donde **el cliente de Walter carga su propio pedido**: **valida su negocio con el DNI del titular** (dato ficticio que ya está asociado a cada uno de los 5 clientes; sin login ni contraseña). Si el DNI no está cargado, la página ofrece la **carga inicial del negocio** (nombre, DNI, teléfono, dirección de entrega): queda guardado como cliente nuevo (lista A, no ve monto, por defecto) y a Walter le aparece con la etiqueta "Cliente nuevo" para validarlo. Después elige los productos en un **tablero de mosaicos con imagen en miniatura** (ver "Selección por tablero") y toca "Enviar pedido".
 - No muestra precios.
 - El pedido queda **impactado** en la "Lista del día" de Walter con la etiqueta "Del cliente", sin que Walter lo cargue de nuevo. Desde ahí sigue el flujo normal: embalaje → boleta.
 - Si el cliente ya tenía pedido ese día, lo que envía se suma al mismo.
 - Limitación del demo: sin backend, el pedido solo llega a Walter si ambas páginas se abren **en el mismo navegador/dispositivo** (comparten `localStorage`). En el sistema real hace falta un servidor.
 - La pantalla "1. Cargar pedido" de Walter sigue existiendo para pedidos que llegan por WhatsApp.
 
+### Selección por tablero (cliente y Walter)
+- Los productos se eligen en un **tablero de 2 columnas**: cada mosaico tiene imagen en miniatura, nombre, forma de venta (`bulto` / `unidad`) y botones **− / +** con la cantidad escrita.
+- `unidad`: el + suma de a 1. `bulto`: el primer + da "medio bulto", después "1 bulto", "2 bultos"... (la etiqueta dice siempre "bulto").
+- El mosaico elegido se marca en verde con una insignia de cantidad; abajo queda el resumen del pedido.
+- Las imágenes son **íconos de ejemplo** (no hay fotos reales); la pantalla lo aclara. En la versión final irían fotos de los productos de Kenay.
+- Se usa en `pedido.html` y en la pantalla "1. Cargar pedido" de Walter.
+
 ### 1. Cargar pedido
 - Elegir cliente (lista fija de 5 clientes ficticios).
-- Elegir producto y cantidad. La cantidad depende de la **forma de venta** del producto:
+- Elegir producto y cantidad en el tablero de mosaicos. La cantidad depende de la **forma de venta** del producto:
   - `unidad`: 1, 2, 3...
   - `bulto`: opciones "1 bulto", "medio bulto", "2 bultos"... (la etiqueta dice siempre "bulto", nunca un número suelto).
 - Antes de guardar, mostrar un **resumen** del pedido con un botón "Confirmar y guardar".
@@ -91,6 +98,7 @@ Precio del bulto = precio por bulto completo; medio bulto = la mitad.
 7. Funciona bien en pantalla de celular.
 8. Un pedido enviado desde `pedido.html` aparece en la lista del día de Walter sin recargarlo a mano.
 9. Si el DNI no está cargado, el cliente puede cargar su negocio y seguir con su pedido; a Walter le aparece como "Cliente nuevo".
+10. La selección de productos es un tablero de mosaicos con miniatura y botones − / + (cliente y Walter).
 
 ## Fuera de alcance (no construir)
 Cobranza, stock, compras, rutas, recordatorios, seguimiento de clientes, WhatsApp automático, facturación fiscal, usuarios y contraseñas.
